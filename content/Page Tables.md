@@ -4,8 +4,8 @@ draft: false
 tags:
   - Memory
   - Pagetable
-  - Virtualisation
   - OS
+  - Virtualisation
 type: post
 date: 2025-04-05T20:22:15+0530
 category: Operating System
@@ -17,7 +17,7 @@ For an address space of 32 bits and page size of 4 KB *(i.e. memory of 2^32 is d
 
 ## Example Memory Access
 
-![[page-table-translation.excalidraw.svg]]
+![page-table-translation.excalidraw.svg](/media/page-table-translation.excalidraw.svg)
 
 As it can be seen from the above memory access flow, translating and accessing a virtual page address to actual physical frame address requires 2 memory access which can be slow when the process assumed that it is making only one memory access to fetch data or instruction from memory.
 
