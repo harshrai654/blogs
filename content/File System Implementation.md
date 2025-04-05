@@ -12,7 +12,7 @@ Tags: #FileSystem #Disk #Indexes
 - **Inode Table (I)**: Blocks 3-7; an array of inodes, where each inode (256 bytes) holds metadata about a file, like size, permissions, and pointers to data blocks.
   5 blocks of 4KB will contain 80 256 byte inode strutures.
 - **Data Region (D)**: Blocks 8-63; the largest section, storing the actual contents of files and directories.
-![Pasted image 20250301204506.png](static/media/pasted-image-20250301204506.png)
+![Pasted image 20250301204506.png](/media/pasted-image-20250301204506.png)
 
 ## Inode
 
@@ -24,7 +24,7 @@ The inode number is the key to finding a file’s metadata on the disk, and it�
 
 ### How Do We Jump to the Disk Block for a Specific Inode Number?
 
-![Pasted image 20250301210115.png](static/media/pasted-image-20250301210115.png)
+![Pasted image 20250301210115.png](/media/pasted-image-20250301210115.png)
 
 In a file system like vsfs, inodes are stored consecutively in an **inode table**, a reserved area of the disk (e.g., spanning blocks 3 to 7). Each inode has a fixed size—let’s say 256 bytes—and the disk is divided into blocks (e.g., 4096 bytes each). To locate a specific inode given its i-number, we calculate its exact position on the disk. Here’s how:
 
