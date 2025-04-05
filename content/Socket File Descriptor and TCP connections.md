@@ -1,12 +1,17 @@
 ---
-title: "Socket File Descriptor and TCP connections"
-date: "19:51"
-tags: 
+title: Socket File Descriptor and TCP connections
+date: 05-04-2025 20:05
+tags:
+  - FileSystem
+  - Networking
+  - OS
+  - TCP
 draft: false
 type: post
+categories:
 ---
 
-### Socket File Descriptors and Their Kernel Structures
+## Socket File Descriptors and Their Kernel Structures
 - A **socket** is a special type of file descriptor (FD) in Linux, represented as `socket:[inode]`.
 - Unlike regular file FDs, socket FDs point to **in-memory kernel structures**, not disk inodes.
 - The `/proc/<pid>/fd` directory lists all FDs for a process, including sockets.
@@ -44,7 +49,7 @@ ino:    35587
 
 ---
 
-### How Data Flows Through a Socket (User Space to Kernel Space)
+## How Data Flows Through a Socket (User Space to Kernel Space)
 
 - When a process writes data to a socket, it is **copied** from **user-space memory to kernel-space buffers** (using syscall `write()`).
 - The kernel then processes and forwards the data to the network interface card (NIC).
@@ -75,7 +80,7 @@ tcp   LISTEN    0      0            0.0.0.0:41555          0.0.0.0:*    users:((
 
 ---
 
-### TCP Connection Queues in the Kernel
+## TCP Connection Queues in the Kernel
 
 Once a TCP connection request arrives, it goes through **two queues managed by the kernel**:
 #### **1️] SYN Queue (Incomplete Connection Queue)**
@@ -123,7 +128,7 @@ cat /proc/net/tcp
 
 ---
 
-### The Role of the Kernel in TCP Connections
+## The Role of the Kernel in TCP Connections
 
 - The **Linux kernel manages the entire TCP stack**:
     

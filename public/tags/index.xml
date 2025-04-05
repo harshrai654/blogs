@@ -36,5 +36,19 @@
       <guid>http://localhost:1313/blogs/tags/os/</guid>
       <description></description>
     </item>
+    <item>
+      <title>Networking</title>
+      <link>http://localhost:1313/blogs/tags/networking/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/blogs/tags/networking/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>TCP</title>
+      <link>http://localhost:1313/blogs/tags/tcp/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/blogs/tags/tcp/</guid>
+      <description></description>
+    </item>
   </channel>
 </rss>

@@ -47,10 +47,10 @@
     </item>
     <item>
       <title>Socket File Descriptor and TCP connections</title>
-      <link>http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections-1/</link>
+      <link>http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections-1/</guid>
-      <description>&lt;h3 id=&#34;socket-file-descriptors-and-their-kernel-structures&#34;&gt;Socket File Descriptors and Their Kernel Structures&lt;/h3&gt;
+      <guid>http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections/</guid>
+      <description>&lt;h2 id=&#34;socket-file-descriptors-and-their-kernel-structures&#34;&gt;Socket File Descriptors and Their Kernel Structures&lt;/h2&gt;
 &lt;ul&gt;
 &lt;li&gt;A &lt;strong&gt;socket&lt;/strong&gt; is a special type of file descriptor (FD) in Linux, represented as &lt;code&gt;socket:[inode]&lt;/code&gt;.&lt;/li&gt;
 &lt;li&gt;Unlike regular file FDs, socket FDs point to &lt;strong&gt;in-memory kernel structures&lt;/strong&gt;, not disk inodes.&lt;/li&gt;
