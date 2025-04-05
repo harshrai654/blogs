@@ -1,0 +1,5 @@
+{{ if or .Site.Params.analytics.goatCounter .Site.Params.goatcounter }}
+    {{ $goatCounter := .Site.Params.goatcounter | default .Site.Params.analytics.goatCounter }}
+    <script data-goatcounter="https://{{ $goatCounter }}.goatcounter.com/count"
+            async src="//gc.zgo.at/count.js"></script>
+{{ end }}
