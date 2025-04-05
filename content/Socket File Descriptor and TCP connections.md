@@ -11,7 +11,6 @@ date: 2025-03-02T16:15:01+0530
 category: Operating System
 ---
 
-# References
 
 ## Socket File Descriptors and Their Kernel Structures
 - A **socket** is a special type of file descriptor (FD) in Linux, represented as `socket:[inode]`.

@@ -10,6 +10,8 @@ params:
   ShowCodeCopyButtons: true
   ShowToc: true
   comments: true
+  analytics: 
+    goatcounter: ttharsh
   mainSections:
     - post
   defaultTheme: auto
