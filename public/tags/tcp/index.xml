@@ -1,28 +1,10 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
-  <channel>
-    <title>TCP on Learning Loop</title>
-    <link>https://harshrai654.github.io/blogs/tags/tcp/</link>
-    <description>Recent content in TCP on Learning Loop</description>
-    <generator>Hugo -- 0.145.0</generator>
-    <language>en-us</language>
-    <lastBuildDate>Sun, 02 Mar 2025 16:15:01 +0530</lastBuildDate>
-    <atom:link href="https://harshrai654.github.io/blogs/tags/tcp/index.xml" rel="self" type="application/rss+xml" />
-    <item>
-      <title>Socket File Descriptor and TCP connections</title>
-      <link>https://harshrai654.github.io/blogs/socket-file-descriptor-and-tcp-connections/</link>
-      <pubDate>Sun, 02 Mar 2025 16:15:01 +0530</pubDate>
-      <guid>https://harshrai654.github.io/blogs/socket-file-descriptor-and-tcp-connections/</guid>
-      <description>&lt;h2 id=&#34;socket-file-descriptors-and-their-kernel-structures&#34;&gt;Socket File Descriptors and Their Kernel Structures&lt;/h2&gt;
-&lt;ul&gt;
-&lt;li&gt;A &lt;strong&gt;socket&lt;/strong&gt; is a special type of file descriptor (FD) in Linux, represented as &lt;code&gt;socket:[inode]&lt;/code&gt;.&lt;/li&gt;
-&lt;li&gt;Unlike regular file FDs, socket FDs point to &lt;strong&gt;in-memory kernel structures&lt;/strong&gt;, not disk inodes.&lt;/li&gt;
-&lt;li&gt;The &lt;code&gt;/proc/&amp;lt;pid&amp;gt;/fd&lt;/code&gt; directory lists all FDs for a process, including sockets.&lt;/li&gt;
-&lt;li&gt;The &lt;strong&gt;inode number&lt;/strong&gt; of a socket can be used to inspect its details via tools like &lt;code&gt;ss&lt;/code&gt; and &lt;code&gt;/proc/net/tcp&lt;/code&gt;.&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h4 id=&#34;example-checking-open-fds-for-process-216&#34;&gt;Example: Checking Open FDs for Process &lt;code&gt;216&lt;/code&gt;&lt;/h4&gt;
-&lt;pre tabindex=&#34;0&#34;&gt;&lt;code&gt;ls -l /proc/216/fd
-&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;strong&gt;Output:&lt;/strong&gt;&lt;/p&gt;</description>
-    </item>
-  </channel>
-</rss>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>TCP on Learning Loop</title><link>https://harshrai654.github.io/blogs/tags/tcp/</link><description>Recent content in TCP on Learning Loop</description><generator>Hugo -- 0.145.0</generator><language>en-us</language><lastBuildDate>Sun, 02 Mar 2025 16:15:01 +0530</lastBuildDate><atom:link href="https://harshrai654.github.io/blogs/tags/tcp/index.xml" rel="self" type="application/rss+xml"/><item><title>Socket File Descriptor and TCP connections</title><link>https://harshrai654.github.io/blogs/socket-file-descriptor-and-tcp-connections/</link><pubDate>Sun, 02 Mar 2025 16:15:01 +0530</pubDate><guid>https://harshrai654.github.io/blogs/socket-file-descriptor-and-tcp-connections/</guid><description>&lt;h2 id="socket-file-descriptors-and-their-kernel-structures">Socket File Descriptors and Their Kernel Structures&lt;/h2>
+&lt;ul>
+&lt;li>A &lt;strong>socket&lt;/strong> is a special type of file descriptor (FD) in Linux, represented as &lt;code>socket:[inode]&lt;/code>.&lt;/li>
+&lt;li>Unlike regular file FDs, socket FDs point to &lt;strong>in-memory kernel structures&lt;/strong>, not disk inodes.&lt;/li>
+&lt;li>The &lt;code>/proc/&amp;lt;pid&amp;gt;/fd&lt;/code> directory lists all FDs for a process, including sockets.&lt;/li>
+&lt;li>The &lt;strong>inode number&lt;/strong> of a socket can be used to inspect its details via tools like &lt;code>ss&lt;/code> and &lt;code>/proc/net/tcp&lt;/code>.&lt;/li>
+&lt;/ul>
+&lt;h4 id="example-checking-open-fds-for-process-216">Example: Checking Open FDs for Process &lt;code>216&lt;/code>&lt;/h4>
+&lt;pre tabindex="0">&lt;code>ls -l /proc/216/fd
+&lt;/code>&lt;/pre>&lt;p>&lt;strong>Output:&lt;/strong>&lt;/p></description></item></channel></rss>
