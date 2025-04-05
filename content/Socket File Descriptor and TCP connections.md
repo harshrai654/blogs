@@ -1,15 +1,12 @@
 ---
 title: Socket File Descriptor and TCP connections
-date: 05-04-2025 20:05
-tags:
-  - FileSystem
-  - Networking
-  - OS
-  - TCP
 draft: false
+tags: 
 type: post
-categories:
+date: 2025-04-05T20:15:01+0530
 ---
+
+# References
 
 ## Socket File Descriptors and Their Kernel Structures
 - A **socket** is a special type of file descriptor (FD) in Linux, represented as `socket:[inode]`.
