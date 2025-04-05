@@ -1,7 +1,13 @@
-
-23-02-2025 15:07
-
-Tags: #Disk #OS #FileSystem
+---
+title: Files And Directories
+date: 2025-02-23T20:41:00
+tags:
+  - Disk
+  - OS
+  - FileSystem
+draft: false
+type: post
+---
 
 # Files and directories
 

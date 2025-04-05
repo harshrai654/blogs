@@ -1,7 +1,13 @@
-
-01-03-2025 20:41
-
-Tags: #FileSystem #Disk #Indexes 
+---
+title: Understanding Inodes and Disk Layout
+date: 2025-03-01T20:41:00
+tags:
+  - FileSystem
+  - Disk
+  - Indexes
+draft: false
+type: post
+---
 
 ## Overall Organization Of Data In Disks
 

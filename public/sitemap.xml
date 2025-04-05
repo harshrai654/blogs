@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>http://localhost:1313/blogs/tags/disk/</loc>
+    <lastmod>2025-03-01T20:41:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/files-and-directories/</loc>
+    <lastmod>2025-03-01T20:41:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/filesystem/</loc>
+    <lastmod>2025-03-01T20:41:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/indexes/</loc>
+    <lastmod>2025-03-01T20:41:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/</loc>
+    <lastmod>2025-03-01T20:41:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/os/</loc>
+    <lastmod>2025-03-01T20:41:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/</loc>
+    <lastmod>2025-03-01T20:41:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/file-system-implementation/</loc>
+    <lastmod>2025-03-01T20:41:00+00:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/categories/</loc>
+  </url><url>
+    <loc>http://localhost:1313/blogs/search/</loc>
+  </url>
+</urlset>

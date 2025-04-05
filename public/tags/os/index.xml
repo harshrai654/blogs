@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>OS on Learning Loop</title>
+    <link>http://localhost:1313/blogs/tags/os/</link>
+    <description>Recent content in OS on Learning Loop</description>
+    <generator>Hugo -- 0.145.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 01 Mar 2025 20:41:00 +0000</lastBuildDate>
+    <atom:link href="http://localhost:1313/blogs/tags/os/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Files And Directories</title>
+      <link>http://localhost:1313/blogs/files-and-directories/</link>
+      <pubDate>Sat, 01 Mar 2025 20:41:00 +0000</pubDate>
+      <guid>http://localhost:1313/blogs/files-and-directories/</guid>
+      <description>&lt;h1 id=&#34;files-and-directories&#34;&gt;Files and directories&lt;/h1&gt;
+&lt;p&gt;File systems virtualize persistent storage (e.g., hard drives, SSDs) into user-friendly files and directories, adding a third pillar to OS abstractions (processes for CPU, address spaces for memory).&lt;/p&gt;
+&lt;h2 id=&#34;file-paths-and-system-calls&#34;&gt;File Paths and System Calls&lt;/h2&gt;
+&lt;p&gt;Files are organized in a &lt;strong&gt;tree-like directory structure&lt;/strong&gt;, starting from the root (/). A file’s location is identified by its &lt;strong&gt;pathname&lt;/strong&gt; (e.g., /home/user/file.txt). To interact with files, processes use &lt;strong&gt;system calls&lt;/strong&gt;:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;open(path, flags)&lt;/strong&gt;: Opens a file and returns a &lt;strong&gt;file descriptor&lt;/strong&gt; (fd).&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;read(fd, buffer, size)&lt;/strong&gt;: Reads data from the file into a buffer using the fd.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;write(fd, buffer, size)&lt;/strong&gt;: Writes data to the file via the fd.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;close(fd)&lt;/strong&gt;: Closes the file, freeing the fd.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&#34;file-descriptors&#34;&gt;File Descriptors&lt;/h2&gt;
+&lt;p&gt;A &lt;strong&gt;file descriptor&lt;/strong&gt; is a small integer, unique to each process, that identifies an open file. When a process calls open(), the operating system assigns it the next available fd (e.g., 3, 4, etc.). Every process starts with three default fds:&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

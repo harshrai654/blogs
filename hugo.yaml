@@ -1,0 +1,34 @@
+baseURL: https://harshrai654.github.io/blogs
+languageCode: en-us
+title: Learning Loop
+theme: PaperMod
+params:
+  ShowReadingTime: true
+  ShowShareButtons: true
+  ShowPostNavLinks: true
+  ShowBreadCrumbs: true
+  ShowCodeCopyButtons: true
+  ShowToc: true
+  comments: true
+  mainSections:
+    - post
+  defaultTheme: auto
+  homeInfoParams:
+    Title: Hi There 👋
+    Content: Hi, My name is Harsh, Welcome to my blog. Here I share whatever new things I learn or my past learnings while exploring system architecture, database internals, observability, and backend infrastructure—one deep dive at a time.
+  socialIcons:
+    - name: "Github"
+      url: "https://github.com/harshrai654"
+    - name: "Twitter"
+      url: "https://x.com/harshrai3"
+  contact:
+    email: harshrai456@gmail.com
+
+outputs:
+  home:
+    - HTML
+    - RSS
+    - JSON # necessary for search
+
+
+
