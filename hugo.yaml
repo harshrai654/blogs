@@ -10,10 +10,10 @@ params:
   ShowCodeCopyButtons: true
   ShowToc: true
   comments: true
-  analytics: 
-    goatcounter: ttharsh
   mainSections:
     - post
+  analytics:
+    goatCounter: ttharsh
   defaultTheme: auto
   homeInfoParams:
     Title: Hi There 👋
