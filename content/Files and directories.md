@@ -7,6 +7,7 @@ tags:
   - FileSystem
 draft: false
 type: post
+category: Operating System
 ---
 
 # Files and directories

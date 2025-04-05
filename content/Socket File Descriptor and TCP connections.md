@@ -1,9 +1,14 @@
 ---
 title: Socket File Descriptor and TCP connections
 draft: false
-tags: 
+tags:
+  - FileSystem
+  - Networking
+  - OS
+  - TCP
 type: post
 date: 2025-04-05T20:15:01+0530
+category: Operating System
 ---
 
 # References

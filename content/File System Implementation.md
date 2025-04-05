@@ -7,6 +7,7 @@ tags:
   - Indexes
 draft: false
 type: post
+category: Operating System
 ---
 
 ## Overall Organization Of Data In Disks
