@@ -45,5 +45,21 @@
 &lt;h2 id=&#34;file-descriptors&#34;&gt;File Descriptors&lt;/h2&gt;
 &lt;p&gt;A &lt;strong&gt;file descriptor&lt;/strong&gt; is a small integer, unique to each process, that identifies an open file. When a process calls open(), the operating system assigns it the next available fd (e.g., 3, 4, etc.). Every process starts with three default fds:&lt;/p&gt;</description>
     </item>
+    <item>
+      <title>Socket File Descriptor and TCP connections</title>
+      <link>http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections-1/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections-1/</guid>
+      <description>&lt;h3 id=&#34;socket-file-descriptors-and-their-kernel-structures&#34;&gt;Socket File Descriptors and Their Kernel Structures&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;A &lt;strong&gt;socket&lt;/strong&gt; is a special type of file descriptor (FD) in Linux, represented as &lt;code&gt;socket:[inode]&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Unlike regular file FDs, socket FDs point to &lt;strong&gt;in-memory kernel structures&lt;/strong&gt;, not disk inodes.&lt;/li&gt;
+&lt;li&gt;The &lt;code&gt;/proc/&amp;lt;pid&amp;gt;/fd&lt;/code&gt; directory lists all FDs for a process, including sockets.&lt;/li&gt;
+&lt;li&gt;The &lt;strong&gt;inode number&lt;/strong&gt; of a socket can be used to inspect its details via tools like &lt;code&gt;ss&lt;/code&gt; and &lt;code&gt;/proc/net/tcp&lt;/code&gt;.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h4 id=&#34;example-checking-open-fds-for-process-216&#34;&gt;Example: Checking Open FDs for Process &lt;code&gt;216&lt;/code&gt;&lt;/h4&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code&gt;ls -l /proc/216/fd
+&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;strong&gt;Output:&lt;/strong&gt;&lt;/p&gt;</description>
+    </item>
   </channel>
 </rss>

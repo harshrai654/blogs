@@ -165,6 +165,19 @@ open(path, flags): Opens a file and returns a file descriptor (fd). read(fd, buf
   <footer class="entry-footer"><span title='2025-02-23 20:41:00 +0000 UTC'>February 23, 2025</span>&nbsp;·&nbsp;11 min</footer>
   <a class="entry-link" aria-label="post link to Files And Directories" href="http://localhost:1313/blogs/files-and-directories/"></a>
 </article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">Socket File Descriptor and TCP connections
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>Socket File Descriptors and Their Kernel Structures A socket is a special type of file descriptor (FD) in Linux, represented as socket:[inode]. Unlike regular file FDs, socket FDs point to in-memory kernel structures, not disk inodes. The /proc/&lt;pid&gt;/fd directory lists all FDs for a process, including sockets. The inode number of a socket can be used to inspect its details via tools like ss and /proc/net/tcp. Example: Checking Open FDs for Process 216 ls -l /proc/216/fd Output:
+...</p>
+  </div>
+  <footer class="entry-footer">4 min</footer>
+  <a class="entry-link" aria-label="post link to Socket File Descriptor and TCP connections" href="http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections-1/"></a>
+</article>
     </main>
     
 <footer class="footer">
