@@ -30,11 +30,25 @@
   /* Blog post cards (.post-entry) inside this .main will now have more space. */
   /* The .home-info is also inside this .main, so we need to constrain it below. */
 
-  /* Single Blog Post Pages: Apply wider width */
-  body.single .main {
+  /* Single Blog Post Pages: Widen the main container */
+  body .main {
+    /* This targets the <main> element on single post pages */
     max-width: var(--custom-responsive-wider-width);
     margin-left: auto;
     margin-right: auto;
+  }
+
+  /*
+    Single Blog Post Pages: Ensure the ARTICLE content within the .main container
+    can also use the wider space.
+    PaperMod typically wraps post content in an <article> tag,
+    often with class "post-single" or "entry".
+  */
+  body.single .main article,              /* Targets the <article> tag directly */
+  body.single .main .post-single,     /* Common PaperMod class for the article wrapper */
+  body.single .main .entry            /* Another possible class for the article/entry */ {
+    max-width: 100%; /* Allows the article to fill its parent (.main), which is now wider. */
+    /* This overrides any theme-default narrower max-width on the article itself. */
   }
 
   /* --- Sections to keep at PaperMod's DEFAULT width (on the homepage) --- */
@@ -46,8 +60,8 @@
   body.list .main .home-info {
     /* This selector is for .home-info specifically on the list page */
     max-width: 720px; /* PaperMod's typical default content width. Adjust if known. */
-    margin-left: 0; /* Center .home-info within the (now wider) .main container */
-    margin-right: auto;
+    margin-left: 0; /* Align to the left of the .main container */
+    margin-right: auto; /* The right margin takes up the remaining space */
     /* Add padding if needed, if its internal content touches edges: */
     /* padding-left: var(--gap); */ /* PaperMod often uses a --gap variable */
     /* padding-right: var(--gap); */
