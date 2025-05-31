@@ -1,10 +1,55 @@
-:root {
-  --main-width: 45%; /* Adjust this value as needed. You can use px, %, rem, etc. */
-}
-.header > .container, /* If the structure is header > div.container */
-.header .nav {
-  /* Or if there's a .nav element inside the header */
-  max-width: var(--main-width); /* Explicitly set it */
-  margin-left: auto;
-  margin-right: auto;
+/* assets/css/extended/custom-width.css */
+
+@media (min-width: 768px) {
+  /* Applies only to screens 768px and wider */
+
+  /* Define our custom wider width variable */
+  :root {
+    --custom-responsive-wider-width: min(
+      85%,
+      1400px
+    ); /* Adjust 85% and 1400px */
+  }
+
+  /* --- Apply WIDER width to specific sections --- */
+
+  /* Header: Apply wider width */
+  .header > .container,
+  .header .nav {
+    max-width: var(--custom-responsive-wider-width);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Homepage - Container for all entries: Apply wider width */
+  body.list .main {
+    max-width: var(--custom-responsive-wider-width);
+    margin-left: auto; /* Center the main container */
+    margin-right: auto;
+  }
+  /* Blog post cards (.post-entry) inside this .main will now have more space. */
+  /* The .home-info is also inside this .main, so we need to constrain it below. */
+
+  /* Single Blog Post Pages: Apply wider width */
+  body.single .main {
+    max-width: var(--custom-responsive-wider-width);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* --- Sections to keep at PaperMod's DEFAULT width (on the homepage) --- */
+
+  /*
+    Constrain .home-info on the list page (homepage) to be narrower,
+    even though its parent .main is now wider.
+  */
+  body.list .main .home-info {
+    /* This selector is for .home-info specifically on the list page */
+    max-width: 720px; /* PaperMod's typical default content width. Adjust if known. */
+    margin-left: 0; /* Center .home-info within the (now wider) .main container */
+    margin-right: auto;
+    /* Add padding if needed, if its internal content touches edges: */
+    /* padding-left: var(--gap); */ /* PaperMod often uses a --gap variable */
+    /* padding-right: var(--gap); */
+  }
 }
