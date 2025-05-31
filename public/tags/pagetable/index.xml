@@ -1,9 +1,34 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>Pagetable on Learning Loop</title><link>https://harshrai654.github.io/blogs/tags/pagetable/</link><description>Recent content in Pagetable on Learning Loop</description><generator>Hugo -- 0.145.0</generator><language>en-us</language><lastBuildDate>Tue, 26 Nov 2024 20:29:34 +0530</lastBuildDate><atom:link href="https://harshrai654.github.io/blogs/tags/pagetable/index.xml" rel="self" type="application/rss+xml"/><item><title>Multilevel Page table</title><link>https://harshrai654.github.io/blogs/multilevel-page-table/</link><pubDate>Tue, 26 Nov 2024 20:29:34 +0530</pubDate><guid>https://harshrai654.github.io/blogs/multilevel-page-table/</guid><description>&lt;h1 id="segmented-page-table">Segmented Page Table&lt;/h1>
-&lt;p>Page table can grow large for a 32-bit address space and 4 KB page size we will be using 20 bits for virtual page number resulting in 2^20 bytes (i.e. 4MB of page table) for a single page table and each process will have its own page table so it is possible that we will be storing ~100sMB for page table alone which is not good.
-&lt;img alt="Pasted image 20241127093849.png" loading="lazy" src="https://harshrai654.github.io/blogs/media/pasted-image-20241127093849.png">
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Pagetable on Learning Loop</title>
+    <link>http://localhost:1313/blogs/tags/pagetable/</link>
+    <description>Recent content in Pagetable on Learning Loop</description>
+    <generator>Hugo -- 0.145.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Tue, 26 Nov 2024 20:29:34 +0530</lastBuildDate>
+    <atom:link href="http://localhost:1313/blogs/tags/pagetable/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Multilevel Page table</title>
+      <link>http://localhost:1313/blogs/multilevel-page-table/</link>
+      <pubDate>Tue, 26 Nov 2024 20:29:34 +0530</pubDate>
+      <guid>http://localhost:1313/blogs/multilevel-page-table/</guid>
+      <description>&lt;h1 id=&#34;segmented-page-table&#34;&gt;Segmented Page Table&lt;/h1&gt;
+&lt;p&gt;Page table can grow large for a 32-bit address space and 4 KB page size we will be using 20 bits for virtual page number resulting in 2^20 bytes (i.e. 4MB of page table) for a single page table and each process will have its own page table so it is possible that we will be storing ~100sMB for page table alone which is not good.
+&lt;img alt=&#34;Pasted image 20241127093849.png&#34; loading=&#34;lazy&#34; src=&#34;http://localhost:1313/blogs/media/pasted-image-20241127093849.png&#34;&gt;
 For above page table with 4 bits for VPN (Virtual page number) we can see that only VPN 0,4,14 and 15 are valid i.e. pointing to a PFN (Physical Frame Number) other PTEs (Page table entry) are just taking up space which is not used.
 We can use segmentation here with base and bound registers for each page table to only store valid PTE in the table.
-&lt;img alt="Pasted image 20241127094506.png" loading="lazy" src="https://harshrai654.github.io/blogs/media/pasted-image-20241127094506.png">
-This will again split the virtual address to also contain the segment bits to identify which segment the address belongs to (code, heap or stack). Instead of using &lt;em>Base Page Table Register&lt;/em> to query page table we will now be using &lt;em>Base Page Table Register [Segment]&lt;/em> to get page table physical address for a given segment.&lt;/p></description></item><item><title>Page Tables</title><link>https://harshrai654.github.io/blogs/page-tables/</link><pubDate>Sun, 17 Nov 2024 20:22:15 +0530</pubDate><guid>https://harshrai654.github.io/blogs/page-tables/</guid><description>&lt;h1 id="page-tables">Page Tables&lt;/h1>
-&lt;p>Page table contains the translation information of virtual page number to physical frame number.
-For an address space of 32 bits and page size of 4 KB &lt;em>(i.e. memory of 2^32 is divided into segments of 4 KB where each segment is called a memory page)&lt;/em> , The virtual address will be of size 32 bits of which 12 bits (2^12 = 4 KB) will be used as offset inside a single page whereas remaining 20 bits will be used as virtual page number&lt;/p></description></item></channel></rss>
+&lt;img alt=&#34;Pasted image 20241127094506.png&#34; loading=&#34;lazy&#34; src=&#34;http://localhost:1313/blogs/media/pasted-image-20241127094506.png&#34;&gt;
+This will again split the virtual address to also contain the segment bits to identify which segment the address belongs to (code, heap or stack). Instead of using &lt;em&gt;Base Page Table Register&lt;/em&gt; to query page table we will now be using &lt;em&gt;Base Page Table Register [Segment]&lt;/em&gt; to get page table physical address for a given segment.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Page Tables</title>
+      <link>http://localhost:1313/blogs/page-tables/</link>
+      <pubDate>Sun, 17 Nov 2024 20:22:15 +0530</pubDate>
+      <guid>http://localhost:1313/blogs/page-tables/</guid>
+      <description>&lt;h1 id=&#34;page-tables&#34;&gt;Page Tables&lt;/h1&gt;
+&lt;p&gt;Page table contains the translation information of virtual page number to physical frame number.
+For an address space of 32 bits and page size of 4 KB &lt;em&gt;(i.e. memory of 2^32 is divided into segments of 4 KB where each segment is called a memory page)&lt;/em&gt; , The virtual address will be of size 32 bits of which 12 bits (2^12 = 4 KB) will be used as offset inside a single page whereas remaining 20 bits will be used as virtual page number&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

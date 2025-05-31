@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><script src="/blogs/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=blogs/livereload" data-no-instant defer></script><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="noindex, nofollow">
+<title>Map Reduce | Learning Loop</title>
+<meta name="keywords" content="">
+<meta name="description" content="This article shares learnings from Google&rsquo;s influential MapReduce paper and explores the challenges encountered while implementing a simplified version. Our system uses multiple worker processes, running on a single machine and communicating via RPC, to mimic key aspects of a distributed environment.
+What is Map-Reduce
+At its core, MapReduce is a programming model and an associated framework for processing and generating massive datasets using a parallel, distributed algorithm, typically on a cluster of computers. You might already be familiar with map and reduce operations from functional programming languages. For instance, in JavaScript, array.map() transforms each element of an array independently based on a mapper function, while array.reduce() iterates through an array, applying a reducer function to accumulate its elements into a single output value (e.g., a sum, or a new, aggregated object).">
+<meta name="author" content="">
+<link rel="canonical" href="http://localhost:1313/blogs/map-reduce/">
+<link crossorigin="anonymous" href="/blogs/assets/css/stylesheet.329e3b0a2b9ec2314690bfe30b84ed8e709577f89ff457b87b666c923ce9b129.css" integrity="sha256-Mp47CiuewjFGkL/jC4TtjnCVd/if9Fe4e2ZskjzpsSk=" rel="preload stylesheet" as="style">
+<link rel="icon" href="http://localhost:1313/blogs/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/blogs/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/blogs/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:1313/blogs/apple-touch-icon.png">
+<link rel="mask-icon" href="http://localhost:1313/blogs/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/blogs/map-reduce/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+    
+    <script data-goatcounter="https://ttharsh.goatcounter.com/count"
+            async src="//gc.zgo.at/count.js"></script>
+
+
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="http://localhost:1313/blogs/" accesskey="h" title="Learning Loop (Alt + H)">Learning Loop</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="http://localhost:1313/blogs/">Home</a></div>
+    <h1 class="post-title entry-hint-parent">
+      Map Reduce
+    </h1>
+    <div class="post-meta"><span title='2025-05-31 12:49:54 +0530 IST'>May 31, 2025</span>&nbsp;·&nbsp;34 min
+
+</div>
+  </header> <div class="toc">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">Table of Contents</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#what-is-map-reduce" aria-label="What is Map-Reduce">What is Map-Reduce</a><ul>
+                        
+                <li>
+                    <a href="#the-mapreduce-execution-flow" aria-label="The MapReduce Execution Flow">The MapReduce Execution Flow</a></li></ul>
+                </li>
+                <li>
+                    <a href="#implementing-mapreduce-in-go-the-coordinator-andworker" aria-label="Implementing MapReduce in Go: The Coordinator and Worker">Implementing MapReduce in Go: The Coordinator and Worker</a><ul>
+                        
+                <li>
+                    <a href="#the-coordinator-mrcoordinatorgo" aria-label="The Coordinator (mr/coordinator.go)">The Coordinator (mr/coordinator.go)</a></li>
+                <li>
+                    <a href="#the-worker-mrworkergo" aria-label="The Worker (mr/worker.go)">The Worker (mr/worker.go)</a></li></ul>
+                </li>
+                <li>
+                    <a href="#conclusion" aria-label="Conclusion">Conclusion</a></li>
+                <li>
+                    <a href="#references" aria-label="References">References</a>
+                </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content"><p>This article shares learnings from Google&rsquo;s influential MapReduce paper and explores the challenges encountered while implementing a simplified version. Our system uses multiple worker processes, running on a single machine and communicating via RPC, to mimic key aspects of a distributed environment.</p>
+<h1 id="what-is-map-reduce">What is Map-Reduce<a hidden class="anchor" aria-hidden="true" href="#what-is-map-reduce">#</a></h1>
+<p>At its core, MapReduce is a programming model and an associated framework for processing and generating massive datasets using a parallel, distributed algorithm, typically on a cluster of computers. You might already be familiar with map and reduce operations from functional programming languages. For instance, in JavaScript, array.map() transforms each element of an array independently based on a mapper function, while array.reduce() iterates through an array, applying a reducer function to accumulate its elements into a single output value (e.g., a sum, or a new, aggregated object).</p>
+<p>The MapReduce paradigm, brilliantly scales these fundamental concepts to tackle data processing challenges that are orders of magnitude larger than what a single machine can handle. The general flow typically involves several key stages:</p>
+<ol>
+<li>
+<p>Splitting: The vast input dataset is initially divided into smaller, independent chunks. Each chunk will be processed by a Map task.</p>
+</li>
+<li>
+<p>Map Phase: A user-defined Map function is applied to each input chunk in parallel across many worker machines. The Map function takes an input pair (e.g., a document ID and its content) and produces a set of intermediate key/value pairs. For example, in a word count application, a Map function might take a line of text and output a key/value pair for each word, like (word, 1).</p>
+</li>
+<li>
+<p>Shuffle and Sort Phase: This is a critical intermediate step. The framework gathers all intermediate key/value pairs produced by the Map tasks, sorts them by key, and groups together all values associated with the same intermediate key. This ensures that all occurrences of (word, 1) for a specific &lsquo;word&rsquo; are brought to the same place for the next phase.</p>
+</li>
+<li>
+<p>Reduce Phase: A user-defined Reduce function then processes the grouped data for each unique key, also in parallel. The Reduce function takes an intermediate key and a list of all values associated with that key. It iterates through these values to produce a final output, often zero or one output value. Continuing the word count example, the Reduce function for a given word would receive (word, [1, 1, 1, &hellip;]) and sum these ones to produce the total count, e.g., (word, total_count).</p>
+</li>
+</ol>
+<p>This distributed approach is highly effective for several reasons:</p>
+<ul>
+<li>
+<p>Scalability: It allows for <strong>horizontal scaling</strong>, you can process more data faster by simply adding more machines to your cluster.</p>
+</li>
+<li>
+<p>Parallelism: It inherently <strong>parallelizes computation</strong>, significantly speeding up processing times for large tasks.</p>
+</li>
+<li>
+<p>Fault Tolerance: The MapReduce framework is designed to handle <strong>machine failures automatically by re-executing failed tasks</strong>, which is crucial when working with large clusters where failures are common.</p>
+</li>
+</ul>
+<p>This model simplifies large-scale data processing by abstracting away the complexities of distributed programming, such as data distribution, parallelization, and fault tolerance, allowing developers to focus on the logic of their Map and Reduce functions.</p>
+<h2 id="the-mapreduce-execution-flow">The MapReduce Execution Flow<a hidden class="anchor" aria-hidden="true" href="#the-mapreduce-execution-flow">#</a></h2>
+<p>To understand how MapReduce processes vast amounts of data, let&rsquo;s walk through the typical execution flow, as illustrated in the Google paper and its accompanying diagram (Figure 1 from the paper, shown below). This flow is orchestrated by a central Master (or Coordinator, as in our lab implementation) and executed by multiple Worker processes.</p>
+<p><img alt="Pasted image 20250531133544.png" loading="lazy" src="/blogs/media/pasted-image-20250531133544.png"></p>
+<p>Here&rsquo;s a breakdown of the key stages:</p>
+<ol>
+<li>
+<p><strong>Initialization &amp; Input Splitting (Diagram: User Program forks Master, Input files split)</strong>:</p>
+<ul>
+<li>The MapReduce library first divides the input files into <code>M</code> smaller, manageable pieces called splits (e.g., split 0 to split 4 in the diagram). Each split is typically <code>16-64MB</code>.</li>
+<li>The User Program then starts multiple copies of the program on a cluster. One copy becomes the Master, and the others become Workers. Here the binary contains logic for master and worker.</li>
+</ul>
+</li>
+<li>
+<p><strong>Task Assignment by Master (Diagram: Master assigns map/reduce to workers)</strong>:</p>
+<ul>
+<li>The Master is the central coordinator. It&rsquo;s responsible for assigning tasks to idle workers. There are M map tasks (one for each input split) and R reduce tasks (a number chosen by the user for the desired level of output parallelism).</li>
+</ul>
+</li>
+<li>
+<p><strong>Map Phase -  Processing Input Splits (Diagram: worker (3) reads split, (4) local write)</strong>:</p>
+<ul>
+<li>A worker assigned a map task reads the content of its designated input split (e.g., split 2).</li>
+<li>It parses key/value pairs from this input data. For each pair, it executes the user-defined Map function. The Map function emits intermediate key/value pairs.</li>
+<li>These intermediate pairs are initially buffered in the worker&rsquo;s memory. Periodically, they are written to the worker&rsquo;s local disk.
+Crucially, these locally written intermediate files are partitioned into R regions/files <strong>(one region/file for each eventual reduce task)</strong>. This is typically done using a partitioning function (e.g., <strong>hash(intermediate_key) % R</strong>).</li>
+<li>The locations of these R partitioned files on the local disk (shown as <em>&ldquo;Intermediate files (on local disks)&rdquo;</em> in the diagram) are then reported back to the Master. The Master now knows where the intermediate data for each reduce task partition resides, spread across possibly many map workers.</li>
+</ul>
+</li>
+<li>
+<p><strong>Reduce Phase - Aggregating Intermediate Data (Diagram: worker (5) remote read, (6) write output):</strong></p>
+<ul>
+<li>Once the Master sees that map tasks are completing, it begins assigning reduce tasks to other <strong>(or the same)</strong> workers.</li>
+<li>When a reduce worker is assigned a partition <em>(say, partition j out of R)</em>, the Master provides it with the locations of all the relevant intermediate files (i.e., the <em>j-th</em> region/file from all map workers that produced j-th intermediate file).</li>
+<li>The reduce worker then performs remote reads from the local disks of the map workers to fetch this buffered intermediate data.</li>
+<li>After retrieving all necessary intermediate data for its assigned partition, <strong>the reduce worker sorts these key/value pairs by the intermediate key.</strong> This groups all occurrences of the same key together. (If data is too large for memory, an external sort is used).</li>
+<li>The worker then iterates through the sorted data. For each unique intermediate key, it calls the user-defined Reduce function, passing the key and the list of all associated intermediate values.</li>
+<li>The output of the Reduce function is appended to a final output file for that specific reduce partition (e.g., output file 0, output file 1). There will be R such output files.</li>
+</ul>
+</li>
+<li>
+<p><strong>Job Completion:</strong></p>
+<ul>
+<li>When all M map tasks and R reduce tasks have successfully completed, the Master signals the original User Program.</li>
+<li>The MapReduce call in the user code returns, and the results are available in the R output files.</li>
+</ul>
+</li>
+</ol>
+<p>Key Design Decisions:</p>
+<ul>
+<li><strong>Abstraction:</strong> Developers focus on <code>Map</code> and <code>Reduce</code> logic, while the framework manages distributed complexities like data partitioning, parallel execution, and shuffling.</li>
+<li><strong>Inherent Fault Tolerance:</strong> The system is designed for resilience against common failures:
+<ul>
+<li>The Master detects worker failures. If a worker assigned a map task fails, the task is re-assigned because its input split is durable.</li>
+<li>More subtly, if a worker completes a map task (producing intermediate files on its local disk) but then fails before all necessary reduce tasks have read those intermediate files, those files are lost. The Master must then reschedule that original map task on another worker to regenerate its intermediate output.</li>
+<li>If a worker assigned a reduce task fails, that reduce task can be re-executed by another worker.</li>
+<li>However, once a reduce task completes successfully and writes its final output (e.g., to mr-out-X), that output is considered final. The system aims to avoid re-executing successfully completed reduce tasks, relying on the durability of their output.</li>
+</ul>
+</li>
+</ul>
+<p>One important aspect to note is that intermediate files are stored on the local file system of the worker nodes that produce them. This design choice is deliberate: by keeping intermediate data local, the <em>system significantly reduces network bandwidth consumption and potential network congestion that would arise if all intermediate data had to be written to, and read from, a global file system.</em> However, this means that crashes in map worker nodes can result in the loss of their locally stored intermediate data, necessitating the re-execution of those map tasks.</p>
+<p>In contrast, the final outputs of worker processes executing the reduce operation are typically written to a global, distributed file system (like GFS in Google&rsquo;s case). Once a reduce task successfully writes its output to this global system, it&rsquo;s considered durable and generally does not need to be re-executed, even if the worker that produced it later fails.</p>
+<h1 id="implementing-mapreduce-in-go-the-coordinator-andworker">Implementing MapReduce in Go: The Coordinator and Worker<a hidden class="anchor" aria-hidden="true" href="#implementing-mapreduce-in-go-the-coordinator-andworker">#</a></h1>
+<p>The Go implementation translates the conceptual MapReduce master-worker architecture into two main programs: a Coordinator and multiple Worker processes, communicating via RPC. We&rsquo;ll explore the key parts of their implementation, starting with the Coordinator.</p>
+<h2 id="the-coordinator-mrcoordinatorgo">The Coordinator (<a href="https://github.com/harshrai654/6.5840/blob/lab0/src/mr/coordinator.go">mr/coordinator.go</a>)<a hidden class="anchor" aria-hidden="true" href="#the-coordinator-mrcoordinatorgo">#</a></h2>
+<p>The Coordinator is the central manager of the MapReduce job. Its primary role is to distribute tasks to workers, track their progress, handle failures, and determine when the overall job is complete.</p>
+<ol>
+<li><strong>Initialization (<code>MakeCoordinator</code>)</strong>
+The <code>MakeCoordinator</code> function initializes the Coordinator&rsquo;s state. It&rsquo;s called by <code>main/mrcoordinator.go</code> with the input files and the number of reduce tasks (<code>nReduce</code>).</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">  1
+</span><span class="lnt">  2
+</span><span class="lnt">  3
+</span><span class="lnt">  4
+</span><span class="lnt">  5
+</span><span class="lnt">  6
+</span><span class="lnt">  7
+</span><span class="lnt">  8
+</span><span class="lnt">  9
+</span><span class="lnt"> 10
+</span><span class="lnt"> 11
+</span><span class="lnt"> 12
+</span><span class="lnt"> 13
+</span><span class="lnt"> 14
+</span><span class="lnt"> 15
+</span><span class="lnt"> 16
+</span><span class="lnt"> 17
+</span><span class="lnt"> 18
+</span><span class="lnt"> 19
+</span><span class="lnt"> 20
+</span><span class="lnt"> 21
+</span><span class="lnt"> 22
+</span><span class="lnt"> 23
+</span><span class="lnt"> 24
+</span><span class="lnt"> 25
+</span><span class="lnt"> 26
+</span><span class="lnt"> 27
+</span><span class="lnt"> 28
+</span><span class="lnt"> 29
+</span><span class="lnt"> 30
+</span><span class="lnt"> 31
+</span><span class="lnt"> 32
+</span><span class="lnt"> 33
+</span><span class="lnt"> 34
+</span><span class="lnt"> 35
+</span><span class="lnt"> 36
+</span><span class="lnt"> 37
+</span><span class="lnt"> 38
+</span><span class="lnt"> 39
+</span><span class="lnt"> 40
+</span><span class="lnt"> 41
+</span><span class="lnt"> 42
+</span><span class="lnt"> 43
+</span><span class="lnt"> 44
+</span><span class="lnt"> 45
+</span><span class="lnt"> 46
+</span><span class="lnt"> 47
+</span><span class="lnt"> 48
+</span><span class="lnt"> 49
+</span><span class="lnt"> 50
+</span><span class="lnt"> 51
+</span><span class="lnt"> 52
+</span><span class="lnt"> 53
+</span><span class="lnt"> 54
+</span><span class="lnt"> 55
+</span><span class="lnt"> 56
+</span><span class="lnt"> 57
+</span><span class="lnt"> 58
+</span><span class="lnt"> 59
+</span><span class="lnt"> 60
+</span><span class="lnt"> 61
+</span><span class="lnt"> 62
+</span><span class="lnt"> 63
+</span><span class="lnt"> 64
+</span><span class="lnt"> 65
+</span><span class="lnt"> 66
+</span><span class="lnt"> 67
+</span><span class="lnt"> 68
+</span><span class="lnt"> 69
+</span><span class="lnt"> 70
+</span><span class="lnt"> 71
+</span><span class="lnt"> 72
+</span><span class="lnt"> 73
+</span><span class="lnt"> 74
+</span><span class="lnt"> 75
+</span><span class="lnt"> 76
+</span><span class="lnt"> 77
+</span><span class="lnt"> 78
+</span><span class="lnt"> 79
+</span><span class="lnt"> 80
+</span><span class="lnt"> 81
+</span><span class="lnt"> 82
+</span><span class="lnt"> 83
+</span><span class="lnt"> 84
+</span><span class="lnt"> 85
+</span><span class="lnt"> 86
+</span><span class="lnt"> 87
+</span><span class="lnt"> 88
+</span><span class="lnt"> 89
+</span><span class="lnt"> 90
+</span><span class="lnt"> 91
+</span><span class="lnt"> 92
+</span><span class="lnt"> 93
+</span><span class="lnt"> 94
+</span><span class="lnt"> 95
+</span><span class="lnt"> 96
+</span><span class="lnt"> 97
+</span><span class="lnt"> 98
+</span><span class="lnt"> 99
+</span><span class="lnt">100
+</span><span class="lnt">101
+</span><span class="lnt">102
+</span><span class="lnt">103
+</span><span class="lnt">104
+</span><span class="lnt">105
+</span><span class="lnt">106
+</span><span class="lnt">107
+</span><span class="lnt">108
+</span><span class="lnt">109
+</span><span class="lnt">110
+</span><span class="lnt">111
+</span><span class="lnt">112
+</span><span class="lnt">113
+</span><span class="lnt">114
+</span><span class="lnt">115
+</span><span class="lnt">116
+</span><span class="lnt">117
+</span><span class="lnt">118
+</span><span class="lnt">119
+</span><span class="lnt">120
+</span><span class="lnt">121
+</span><span class="lnt">122
+</span><span class="lnt">123
+</span><span class="lnt">124
+</span><span class="lnt">125
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// MakeCoordinator is called by main/mrcoordinator.go to create and initialize</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// the coordinator for a MapReduce job.</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// - files: A slice of input file paths for the map tasks.</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// - nReduce: The desired number of reduce tasks.</span>
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">MakeCoordinator</span><span class="p">(</span><span class="nx">files</span> <span class="p">[]</span><span class="kt">string</span><span class="p">,</span> <span class="nx">nReduce</span> <span class="kt">int</span><span class="p">)</span> <span class="o">*</span><span class="nx">Coordinator</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Step 1: Initialize the list of ready Map tasks.</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// NewTaskList() creates a new instance of TaskList (wrapper around container/list).</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">readyTaskList</span> <span class="o">:=</span> <span class="nf">NewTaskList</span><span class="p">()</span> 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// For each input file, a Map task is created.</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">index</span><span class="p">,</span> <span class="nx">file</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">files</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">readyTaskList</span><span class="p">.</span><span class="nf">AddTask</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">Task</span><span class="p">{</span> <span class="c1">// Task struct holds details for a single map or reduce operation.</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Filename</span><span class="p">:</span> <span class="nx">file</span><span class="p">,</span>                     <span class="c1">// Input file for this map task.</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Status</span><span class="p">:</span>   <span class="nx">StatusReady</span><span class="p">,</span>              <span class="c1">// Initial status: ready to be assigned.</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Type</span><span class="p">:</span>     <span class="nx">MapType</span><span class="p">,</span>                  <span class="c1">// Task type is Map.</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Id</span><span class="p">:</span>       <span class="nf">TaskId</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;m-%d&#34;</span><span class="p">,</span> <span class="nx">index</span><span class="p">)),</span> <span class="c1">// Unique ID for the map task (e.g., &#34;m-0&#34;).</span>
+</span></span><span class="line"><span class="cl">		<span class="p">})</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Step 2: Initialize the Coordinator struct with its core state variables.</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span> <span class="o">:=</span> <span class="nx">Coordinator</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// --- Task Tracking ---</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// readyTasks: Holds tasks (initially all Map tasks, later Reduce tasks) that are</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//             waiting to be assigned to a worker.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//             Managed by GetTask (removes) and ReportTask/checkWorkerStatus (adds back on failure).</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">readyTasks</span><span class="p">:</span>        <span class="o">*</span><span class="nx">readyTaskList</span><span class="p">,</span> 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// runningTasks: A map from TaskId to *RunningTask. Tracks tasks currently assigned</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//               to one or more workers. A RunningTask includes the Task details and a</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//               list of WorkerIds processing it.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//               Managed by GetTask (adds) and ReportTask/checkWorkerStatus (modifies/removes).</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">runningTasks</span><span class="p">:</span>      <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="nx">TaskId</span><span class="p">]</span><span class="o">*</span><span class="nx">RunningTask</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// successTasks: A map from TaskId to *Task. Stores tasks that have been successfully</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//               completed by a worker.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//               Managed by ReportTask (adds on success).</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">successTasks</span><span class="p">:</span>      <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="nx">TaskId</span><span class="p">]</span><span class="o">*</span><span class="nx">Task</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// --- Job Parameters &amp; Phase Control ---</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// nReduce: The target number of reduce partitions/tasks for the job.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//          Used by Map workers to partition intermediate data and by the Coordinator</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//          to determine when all reduce tasks are done.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">nReduce</span><span class="p">:</span>           <span class="nx">nReduce</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// nMap: The total number of map tasks, simply the count of input files.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//       Used to determine when all map tasks are done.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">nMap</span><span class="p">:</span>              <span class="nb">len</span><span class="p">(</span><span class="nx">files</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// pendingMappers: A counter for map tasks that are not yet successfully completed.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                 Crucially used in GetTask to gate the start of Reduce tasks –</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                 Reduce tasks cannot begin until pendingMappers is 0.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                 Decremented in ReportTask upon successful map task completion.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">pendingMappers</span><span class="p">:</span>    <span class="nb">len</span><span class="p">(</span><span class="nx">files</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// --- Intermediate Data Management ---</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// intermediateFiles: An IntermediateFileMap (map[string]map[WorkerId][]string).</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                    This is vital: maps a partition key (string, for a reduce task)</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                    to another map. This inner map links a WorkerId (of a map worker)</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                    to a list of filenames (intermediate files produced by that map worker</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                    for that specific partition key).</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                    Populated in ReportTask when a Map task succeeds.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                    Read by GetTask to provide Reduce workers with their input locations.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">intermediateFiles</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="nx">IntermediateFileMap</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// --- Worker Tracking ---</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// workers: A map from WorkerId to *WorkerMetdata. Stores metadata about each worker</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//          that has interacted with the coordinator. WorkerMetdata includes:</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//          - lastHeartBeat: Time of the worker&#39;s last contact, used by checkWorkerStatus for timeouts.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//          - runningTask: TaskId of the task currently assigned to this worker.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//          - successfulTasks: A map of tasks this worker has completed (useful for debugging/optimizations, not strictly essential for basic fault tolerance in this lab&#39;s context if tasks are just re-run).</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//          Populated/updated in GetTask and ReportTask.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">workers</span><span class="p">:</span>           <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="nx">WorkerId</span><span class="p">]</span><span class="o">*</span><span class="nx">WorkerMetdata</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// --- Coordinator Shutdown &amp; Job Completion Signaling ---</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// finished: A boolean flag set to true when all map and reduce tasks are successfully</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//           completed (checked in ReportTask). Signals the main job is done.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">finished</span><span class="p">:</span>          <span class="kc">false</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// done: A channel of empty structs (chan struct{}). Used to signal background goroutines</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//       (like checkWorkerStatus) to terminate gracefully when the job is `finished`.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//       Closed in the Done() method.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">done</span><span class="p">:</span>              <span class="nb">make</span><span class="p">(</span><span class="kd">chan</span> <span class="kd">struct</span><span class="p">{}),</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// shutdownSignaled: A boolean flag, true after `done` channel is closed. Prevents</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                   multiple closures or redundant shutdown logic.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">shutdownSignaled</span><span class="p">:</span>  <span class="kc">false</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// allGoroutinesDone: A boolean flag, true after `wg.Wait()` in `Done()` confirms all</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                    background goroutines have exited.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">allGoroutinesDone</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// wg (sync.WaitGroup): Used in conjunction with `done` to wait for background goroutines</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                      to complete their cleanup before the Coordinator fully exits.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                      Incremented before launching a goroutine, Done called in goroutine&#39;s defer.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">//                      (wg is part of the Coordinator struct, initialized implicitly here)</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Initialised ready tasklist of %d tasks\n&#34;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">files</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Step 3: Start Services</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Start the RPC server so the coordinator can listen for requests from workers.</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// This makes methods like GetTask and ReportTask callable by workers.</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nf">server</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Step 4: Launch Background Health Checker Goroutine</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// This goroutine is responsible for fault tolerance, specifically detecting</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// and handling timed-out (presumed crashed) workers.</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nx">wg</span><span class="p">.</span><span class="nf">Add</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="c1">// Increment WaitGroup counter before launching the goroutine.</span>
+</span></span><span class="line"><span class="cl">	<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">defer</span> <span class="nx">c</span><span class="p">.</span><span class="nx">wg</span><span class="p">.</span><span class="nf">Done</span><span class="p">()</span> <span class="c1">// Decrement counter when the goroutine exits.</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">select</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">c</span><span class="p">.</span><span class="nx">done</span><span class="p">:</span> <span class="c1">// Listen for the shutdown signal from the main coordinator logic.</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[Coordinator Shutdown]: Closing worker health check background thread.\n&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="k">return</span> <span class="c1">// Exit the goroutine.</span>
+</span></span><span class="line"><span class="cl">			<span class="k">default</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">				<span class="c1">// Periodically call checkWorkerStatus to handle unresponsive workers.</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">c</span><span class="p">.</span><span class="nf">checkWorkerStatus</span><span class="p">()</span> 
+</span></span><span class="line"><span class="cl">				<span class="c1">// WORKER_TIMEOUT_SECONDS is 10s, so this checks every 5s.</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="nx">WORKER_TIMEOUT_SECONDS</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> 
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="o">&amp;</span><span class="nx">c</span> <span class="c1">// Return the initialized Coordinator instance.</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>Initially, <code>M</code> map tasks are created (one for each input file) and added to <code>readyTasks</code>.</li>
+<li>Contrary to the paper we can only run reduce tasks only when all mapper tasks are finished as input for a reduce task may require intermediate file output(s) from more than one map task since a map task produces at max <code>R</code> intermediate partition files,  each designated to one reduce task and reduce workers needs to fetch these intermediate files from each of the mapper worker&rsquo;s local file system.</li>
+<li>An RPC server (<code>c.server()</code>) is started for worker communication, and a background <code>goroutine (checkWorkerStatus)</code> is launched for fault tolerance. All shared state within the Coordinator (e.g., task lists, worker metadata) must be protected by mutexes (as seen in its methods like <code>GetTask</code>, <code>ReportTask</code>) since the shared state can be accessed by multiple go routines handling RPC calls from various worker processed which may lead to race conditions.</li>
+<li></li>
+</ul>
+<ol start="2">
+<li><strong>Assigning Tasks to Workers (<code>GetTask</code> RPC Handler)</strong>
+Workers call the <code>GetTask</code> RPC handler to request jobs <em>(either Map or Reduce tasks)</em> from the Coordinator.</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span><span class="lnt">78
+</span><span class="lnt">79
+</span><span class="lnt">80
+</span><span class="lnt">81
+</span><span class="lnt">82
+</span><span class="lnt">83
+</span><span class="lnt">84
+</span><span class="lnt">85
+</span><span class="lnt">86
+</span><span class="lnt">87
+</span><span class="lnt">88
+</span><span class="lnt">89
+</span><span class="lnt">90
+</span><span class="lnt">91
+</span><span class="lnt">92
+</span><span class="lnt">93
+</span><span class="lnt">94
+</span><span class="lnt">95
+</span><span class="lnt">96
+</span><span class="lnt">97
+</span><span class="lnt">98
+</span><span class="lnt">99
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// An RPC handler to find next available task (map or reduce)</span>
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Coordinator</span><span class="p">)</span> <span class="nf">GetTask</span><span class="p">(</span><span class="nx">args</span> <span class="o">*</span><span class="nx">GetTaskArgs</span><span class="p">,</span> <span class="nx">reply</span> <span class="o">*</span><span class="nx">GetTaskReply</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">defer</span> <span class="nx">c</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">workerMetadata</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">workers</span><span class="p">[</span><span class="nx">args</span><span class="p">.</span><span class="nx">WorkerId</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Requesting worker already processing a task</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Skip task assignment</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">ok</span> <span class="o">&amp;&amp;</span> <span class="nx">workerMetadata</span><span class="p">.</span><span class="nx">runningTask</span> <span class="o">!=</span> <span class="s">&#34;&#34;</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[GetTask]: Worker %d already processing task %s, rejecting task assignment request.\n&#34;</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">WorkerId</span><span class="p">,</span> <span class="nx">workerMetadata</span><span class="p">.</span><span class="nx">runningTask</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">c</span><span class="p">.</span><span class="nx">readyTasks</span><span class="p">.</span><span class="nf">GetTaskCount</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// No tasks available</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// map reduce is complete if we also have len(runningTasks) == 0</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// Sending InvalidType task in such cases to worker</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">reply</span><span class="p">.</span><span class="nx">Task</span> <span class="p">=</span> <span class="nx">Task</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Type</span><span class="p">:</span> <span class="nx">InvalidType</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">task</span> <span class="o">:=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">readyTasks</span><span class="p">.</span><span class="nf">RemoveTask</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Skipping tasks that are possible retrials with an instance already completed and part of success set</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// It is possible that a task here already has a status of `StatusRunning` we are not skipping such tasks in ready queue</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// This will result in multiple instances of same task execution, This case is possible if previous worker processing the task</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// failed/crashed (timeout of not reporting reached) and we added another instance of the same task.</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Even if two workers report completion of same task only one of them will remove the task from running queue and add it to</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// success set, Reporting by slower worker will be skipped.</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Only assing a reduce task when we are sure there is no pending map task left</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Since then reduce task will surely fail because of unavailabiltiy of intermeidate fiel data</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">task</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Status</span> <span class="o">==</span> <span class="nx">StatusSuccess</span> <span class="o">||</span> <span class="p">(</span><span class="nx">task</span><span class="p">.</span><span class="nx">Type</span> <span class="o">==</span> <span class="nx">ReduceType</span> <span class="o">&amp;&amp;</span> <span class="nx">c</span><span class="p">.</span><span class="nx">pendingMappers</span> <span class="p">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Status</span> <span class="o">==</span> <span class="nx">StatusSuccess</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[GetTask]: Skipping ready task %s since it is already successfully completed\n&#34;</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[GetTask]: Skipping reduce task %s since there are %d pending mappers\n&#34;</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span> <span class="nx">c</span><span class="p">.</span><span class="nx">pendingMappers</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">task</span> <span class="p">=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">readyTasks</span><span class="p">.</span><span class="nf">RemoveTask</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">break</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Either all tasks are completed (if len(runningTasks) == 0)</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// OR all tasks are currently being processed by some workers</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">task</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">reply</span><span class="p">.</span><span class="nx">Task</span> <span class="p">=</span> <span class="nx">Task</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Type</span><span class="p">:</span> <span class="nx">InvalidType</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[GetTask]: No task to assign to worker %d, # Tasks Running : %d, # Tasks Completed: %d\n&#34;</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">WorkerId</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">runningTasks</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[GetTask]: Found a task with id %s for worker %d. Current Task Status: %v\n&#34;</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">WorkerId</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Status</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Found a task with Status as either `StatusError` or `StatusReady` or `StatusRunning`</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// If task&#39;s status is: `StatusError`` -&gt; Retrying failed task again</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// If task&#39;s status is `StatusReady` -&gt; First Attempt of processing of task</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// If task&#39;s status is `StatusRunning` -&gt; Retrying already running task due to delay from previous assigned worker</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">task</span><span class="p">.</span><span class="nx">Worker</span> <span class="p">=</span> <span class="nx">args</span><span class="p">.</span><span class="nx">WorkerId</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">task</span><span class="p">.</span><span class="nx">StartTime</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">task</span><span class="p">.</span><span class="nx">Status</span> <span class="p">=</span> <span class="nx">StatusRunning</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">reply</span><span class="p">.</span><span class="nx">Task</span> <span class="p">=</span> <span class="o">*</span><span class="nx">task</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Type</span> <span class="o">==</span> <span class="nx">ReduceType</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// Add intermediate file locations collected from various map executions</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">reply</span><span class="p">.</span><span class="nx">IntermediateFiles</span> <span class="p">=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">intermediateFiles</span><span class="p">[</span><span class="nx">task</span><span class="p">.</span><span class="nx">Filename</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">reply</span><span class="p">.</span><span class="nx">NR</span> <span class="p">=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">nReduce</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Update list of workers currently processing a taskId</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">rt</span> <span class="o">:=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">runningTasks</span><span class="p">[</span><span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">rt</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">c</span><span class="p">.</span><span class="nx">runningTasks</span><span class="p">[</span><span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">]</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">RunningTask</span><span class="p">{}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nx">runningTasks</span><span class="p">[</span><span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">].</span><span class="nx">task</span> <span class="p">=</span> <span class="nx">task</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nx">runningTasks</span><span class="p">[</span><span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">].</span><span class="nx">workers</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">runningTasks</span><span class="p">[</span><span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">].</span><span class="nx">workers</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">WorkerId</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">workerMetadata</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">workerMetadata</span><span class="p">.</span><span class="nx">lastHeartBeat</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">workerMetadata</span><span class="p">.</span><span class="nx">runningTask</span> <span class="p">=</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">c</span><span class="p">.</span><span class="nx">workers</span><span class="p">[</span><span class="nx">args</span><span class="p">.</span><span class="nx">WorkerId</span><span class="p">]</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">WorkerMetdata</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">lastHeartBeat</span><span class="p">:</span>   <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">runningTask</span><span class="p">:</span>     <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">successfulTasks</span><span class="p">:</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="nx">TaskId</span><span class="p">]</span><span class="o">*</span><span class="nx">TaskOutput</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>As defined in the paper&rsquo;s step-2 of the execution flow this method is called by various workers to request task which are in <code>readyTasks</code>.</li>
+<li>It deals with scenarios like workers already being busy, no tasks being available, or tasks being unsuitable for immediate assignment (e.g., reduce tasks when mappers are still active).</li>
+<li>If a valid task is found all necessary details to execute that task are populated in <code>GetTaskReply</code> struct. For Map tasks, it implicitly provides the input file (via task.Filename). For Reduce tasks, it explicitly provides the locations of all relevant intermediate files and the total number of reducers (NR).</li>
+</ul>
+<ol start="3">
+<li><strong>Handling Task Completion/Failure (<code>ReportTask</code> RPC Handler)</strong>
+Workers call <code>ReportTask</code> to inform the coordinator about the outcome of their assigned task.</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span><span class="lnt">76
+</span><span class="lnt">77
+</span><span class="lnt">78
+</span><span class="lnt">79
+</span><span class="lnt">80
+</span><span class="lnt">81
+</span><span class="lnt">82
+</span><span class="lnt">83
+</span><span class="lnt">84
+</span><span class="lnt">85
+</span><span class="lnt">86
+</span><span class="lnt">87
+</span><span class="lnt">88
+</span><span class="lnt">89
+</span><span class="lnt">90
+</span><span class="lnt">91
+</span><span class="lnt">92
+</span><span class="lnt">93
+</span><span class="lnt">94
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Coordinator</span><span class="p">)</span> <span class="nf">ReportTask</span><span class="p">(</span><span class="nx">args</span> <span class="o">*</span><span class="nx">ReportTaskArgs</span><span class="p">,</span> <span class="nx">reply</span> <span class="o">*</span><span class="nx">ReportTaskReply</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">defer</span> <span class="nx">c</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">reply</span><span class="p">.</span><span class="nx">Status</span> <span class="p">=</span> <span class="kc">true</span> <span class="c1">// optimistic reply</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">taskSuccessInstance</span> <span class="o">:=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">[</span><span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Id</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// ... (validation: check if task already completed, if worker owns task) ...</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Reported task is already in success set.</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Possibly retried after timeout by another worker</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// One of the worker complted the task.</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">taskSuccessInstance</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[ReportTask]: Task %s has already been completed by worker %d\n&#34;</span><span class="p">,</span> <span class="nx">taskSuccessInstance</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span> <span class="nx">taskSuccessInstance</span><span class="p">.</span><span class="nx">Worker</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// ... (update worker metadata) ...</span>
+</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	
+</span></span><span class="line"><span class="cl">	<span class="c1">// ... (check if worker lost ownership of the task) ...</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Status</span> <span class="o">==</span> <span class="nx">StatusError</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[ReportTask]: Task %s reported with status %v by worker %d\n&#34;</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Status</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Worker</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// ... (disown worker from task) ...</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// If no other worker is processing this task, add it back to readyTasks</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">runningTasks</span><span class="p">[</span><span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Id</span><span class="p">].</span><span class="nx">workers</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">task</span> <span class="o">:=</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">task</span><span class="p">.</span><span class="nx">Worker</span> <span class="p">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">task</span><span class="p">.</span><span class="nx">StartTime</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Time</span><span class="p">{}</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">task</span><span class="p">.</span><span class="nx">Status</span> <span class="p">=</span> <span class="nx">StatusReady</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">c</span><span class="p">.</span><span class="nx">readyTasks</span><span class="p">.</span><span class="nf">AddTask</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">task</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Status</span> <span class="o">==</span> <span class="nx">StatusSuccess</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">switch</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Type</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">case</span> <span class="nx">MapType</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">intermediateFiles</span> <span class="o">:=</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Output</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[ReportTask]: Mapper Task %s completed successfully by worker %d, produced following intermediate files: %v\n&#34;</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Worker</span><span class="p">,</span> <span class="nx">intermediateFiles</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">			<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">filename</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">intermediateFiles</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">partitionKey</span> <span class="o">:=</span> <span class="nx">strings</span><span class="p">.</span><span class="nf">Split</span><span class="p">(</span><span class="nx">filename</span><span class="p">,</span> <span class="s">&#34;-&#34;</span><span class="p">)[</span><span class="mi">4</span><span class="p">]</span> <span class="c1">// Assumes filename format like w-&lt;workerId&gt;/mr-m-&lt;taskId&gt;-&lt;hash&gt;</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">paritionFiles</span><span class="p">,</span> <span class="nx">ok</span> <span class="o">:=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">intermediateFiles</span><span class="p">[</span><span class="nx">partitionKey</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">				<span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="o">||</span> <span class="nx">paritionFiles</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">					<span class="nx">paritionFiles</span> <span class="p">=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="nx">WorkerId</span><span class="p">][]</span><span class="kt">string</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">paritionFiles</span><span class="p">[</span><span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Worker</span><span class="p">]</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">paritionFiles</span><span class="p">[</span><span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Worker</span><span class="p">],</span> <span class="nx">filename</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">c</span><span class="p">.</span><span class="nx">intermediateFiles</span><span class="p">[</span><span class="nx">partitionKey</span><span class="p">]</span> <span class="p">=</span> <span class="nx">paritionFiles</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// ... (update worker metadata, move task to successTasks, decrement pendingMappers) ...</span>
+</span></span><span class="line"><span class="cl">			<span class="nb">delete</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">runningTasks</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">[</span><span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Id</span><span class="p">]</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">args</span><span class="p">.</span><span class="nx">Task</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">c</span><span class="p">.</span><span class="nx">pendingMappers</span><span class="o">--</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">c</span><span class="p">.</span><span class="nx">pendingMappers</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;\nAll map task ran successfully. Tasks Run Details: \n %v \n&#34;</span><span class="p">,</span> <span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">c</span><span class="p">.</span><span class="nf">addReduceTasks</span><span class="p">()</span> <span class="c1">// Trigger creation of reduce tasks</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="k">case</span> <span class="nx">ReduceType</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// ... (update worker metadata, move task to successTasks) ...</span>
+</span></span><span class="line"><span class="cl">			<span class="nb">delete</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">runningTasks</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Id</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">[</span><span class="nx">args</span><span class="p">.</span><span class="nx">Task</span><span class="p">.</span><span class="nx">Id</span><span class="p">]</span> <span class="p">=</span> <span class="o">&amp;</span><span class="nx">args</span><span class="p">.</span><span class="nx">Task</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">)</span> <span class="o">==</span> <span class="nx">c</span><span class="p">.</span><span class="nx">nMap</span><span class="o">+</span><span class="nx">c</span><span class="p">.</span><span class="nx">nReduce</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;\nAll reduce tasks ran successfully. Tasks Run Details: \n %v \n&#34;</span><span class="p">,</span> <span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">c</span><span class="p">.</span><span class="nx">finished</span> <span class="p">=</span> <span class="kc">true</span> <span class="c1">// Mark entire job as done</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="k">default</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// ...</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// ... (logging) ...</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ... (helper function addReduceTasks)</span>
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Coordinator</span><span class="p">)</span> <span class="nf">addReduceTasks</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">index</span> <span class="o">:=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">partition</span><span class="p">,</span> <span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">c</span><span class="p">.</span><span class="nx">intermediateFiles</span> <span class="p">{</span> <span class="c1">// Iterate over collected partitions</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">task</span> <span class="o">:=</span> <span class="nx">Task</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Status</span><span class="p">:</span>   <span class="nx">StatusReady</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Type</span><span class="p">:</span>     <span class="nx">ReduceType</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Id</span><span class="p">:</span>       <span class="nf">TaskId</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;r-%d&#34;</span><span class="p">,</span> <span class="nx">index</span><span class="p">)),</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">Filename</span><span class="p">:</span> <span class="nx">partition</span><span class="p">,</span> <span class="c1">// Partition key becomes the &#39;filename&#39; for the reduce task</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">[</span><span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">]</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span> <span class="c1">// Avoid re-adding if already processed (e.g. due to retries)</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">c</span><span class="p">.</span><span class="nx">readyTasks</span><span class="p">.</span><span class="nf">AddTask</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">task</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Reduce Task with Id %s Added to ready queue (Intermediate partition %s with %d files)\n&#34;</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span> <span class="nx">partition</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">v</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">index</span><span class="o">++</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nx">nReduce</span> <span class="p">=</span> <span class="nx">index</span> <span class="c1">// Update nReduce to actual number of partitions, good for robustness</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li>If a task is reported with <code>StatusError</code>, and it&rsquo;s the only instance of that task running, it&rsquo;s re-queued for a later attempt. This is a core part of fault tolerance.</li>
+<li><em>Processes Successful Map Tasks:</em>
+<ul>
+<li>Collects and organizes the locations of intermediate files (output of Map functions) based on their partition key. This information (<code>c.intermediateFiles</code>) is vital for the subsequent Reduce phase, as it tells Reduce workers where to fetch their input data. This aligns with step 4 of the paper&rsquo;s flow.</li>
+<li>Decrements <code>pendingMappers</code>. When all mappers are done, it triggers <code>addReduceTasks</code>.</li>
+<li>Once all Map tasks are complete, <code>addReduceTasks</code> is called. It iterates through all the unique partition keys derived from the intermediate files and creates one <code>Reduce</code> task for each, adding them to the <code>readyTasks</code> queue.</li>
+</ul>
+</li>
+<li><em>Processes Successful Reduce Tasks:</em>
+<ul>
+<li>Marks the reduce task as complete.</li>
+<li>Checks if all Map and Reduce tasks for the entire job are finished. If so, it sets <code>c.finished = true</code>, signaling that the Coordinator can begin shutting down.</li>
+</ul>
+</li>
+<li>By checking <code>c.successTasks</code> at the beginning, it avoids reprocessing reports for tasks already marked as successful, which helps in scenarios with duplicate or late messages.</li>
+</ul>
+<ol start="4">
+<li><strong>Fault Tolerance (<code>checkWorkerStatus</code>)</strong>
+A background <code>goroutine</code> periodically checks for unresponsive workers.</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Coordinator</span><span class="p">)</span> <span class="nf">checkWorkerStatus</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">defer</span> <span class="nx">c</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">workerId</span><span class="p">,</span> <span class="nx">metadata</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">c</span><span class="p">.</span><span class="nx">workers</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">lastHeartBeatDuration</span> <span class="o">:=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Since</span><span class="p">(</span><span class="nx">metadata</span><span class="p">.</span><span class="nx">lastHeartBeat</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">metadata</span><span class="p">.</span><span class="nx">runningTask</span> <span class="o">!=</span> <span class="s">&#34;&#34;</span> <span class="o">&amp;&amp;</span> <span class="nx">lastHeartBeatDuration</span> <span class="o">&gt;=</span> <span class="nx">WORKER_TIMEOUT_SECONDS</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Worker %d have not reported in last %s\n&#34;</span><span class="p">,</span> <span class="nx">workerId</span><span class="p">,</span> <span class="nx">lastHeartBeatDuration</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">taskToRetry</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="o">*</span><span class="nx">Task</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			
+</span></span><span class="line"><span class="cl">			<span class="nx">runningTask</span> <span class="o">:=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">runningTasks</span><span class="p">[</span><span class="nx">metadata</span><span class="p">.</span><span class="nx">runningTask</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">runningTask</span> <span class="o">==</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="c1">// This case should ideally not happen if state is consistent</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[checkWorkerStatus]: Local worker state shows worker %d running rask %s whereas global running tasks state does not show any worker for the same task.\n&#34;</span><span class="p">,</span> <span class="nx">workerId</span><span class="p">,</span> <span class="nx">metadata</span><span class="p">.</span><span class="nx">runningTask</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="c1">// Potentially clear worker&#39;s running task if inconsistent: metadata.runningTask = &#34;&#34;</span>
+</span></span><span class="line"><span class="cl">				<span class="k">continue</span> <span class="c1">// or return, depending on desired error handling</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">			<span class="nx">taskToRetry</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">taskToRetry</span><span class="p">,</span> <span class="nx">runningTask</span><span class="p">.</span><span class="nx">task</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">metadata</span><span class="p">.</span><span class="nx">runningTask</span> <span class="p">=</span> <span class="s">&#34;&#34;</span> <span class="c1">// Worker is no longer considered running this task</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">			<span class="c1">// Remove this worker from the list of workers for the task</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">runningTask</span><span class="p">.</span><span class="nx">workers</span> <span class="p">=</span> <span class="nx">slices</span><span class="p">.</span><span class="nf">DeleteFunc</span><span class="p">(</span><span class="nx">runningTask</span><span class="p">.</span><span class="nx">workers</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">w</span> <span class="nx">WorkerId</span><span class="p">)</span> <span class="kt">bool</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="k">return</span> <span class="nx">w</span> <span class="o">==</span> <span class="nx">workerId</span>
+</span></span><span class="line"><span class="cl">			<span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">			<span class="c1">// If this was the only worker on this task, or if we want to aggressively reschedule</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// (The current code implies rescheduling if *any* assigned worker times out, which is fine for this lab)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">taskToRetry</span><span class="p">)</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span> <span class="c1">// Will always be true if runningTask was not nil</span>
+</span></span><span class="line"><span class="cl">				<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">task</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">taskToRetry</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">					<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[checkWorkerStatus]: Adding task %s of type %d with status %d back to the ready queue.\n&#34;</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Type</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Status</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">					
+</span></span><span class="line"><span class="cl">					<span class="c1">// Reset task for retry</span>
+</span></span><span class="line"><span class="cl">					<span class="nx">task</span><span class="p">.</span><span class="nx">Status</span> <span class="p">=</span> <span class="nx">StatusReady</span>
+</span></span><span class="line"><span class="cl">					<span class="nx">task</span><span class="p">.</span><span class="nx">Worker</span> <span class="p">=</span> <span class="mi">0</span> <span class="c1">// Clear previous worker assignment</span>
+</span></span><span class="line"><span class="cl">					<span class="nx">task</span><span class="p">.</span><span class="nx">Output</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="kt">string</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="c1">// Clear previous output</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">					<span class="nx">c</span><span class="p">.</span><span class="nx">readyTasks</span><span class="p">.</span><span class="nf">AddTask</span><span class="p">(</span><span class="nx">task</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span> 
+</span></span><span class="line"><span class="cl">		<span class="c1">// ... (logging for active workers) ...</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>	
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p><em>Key Decisions Upon Detecting a Failed Worker:</em></p>
+<ul>
+<li><strong>Identify the Affected Task:</strong> The primary task to consider is <code>metadata.runningTask</code>, which the failed worker was supposed to be executing. The details of this task are retrieved from <code>c.runningTasks</code>.</li>
+<li><strong>Update Worker&rsquo;s State:</strong> The failed worker&rsquo;s <code>metadata.runningTask</code> is cleared, indicating it&rsquo;s no longer considered to be working on that task by the coordinator.</li>
+<li><strong>Update Task&rsquo;s Worker List:</strong> The failed <code>workerId</code> is removed from the <code>runningTaskEntry.workers</code> list, which tracks all workers assigned to that specific task ID.</li>
+<li><strong>Reset Task for Re-execution:</strong> The affected taskInstanceToRetry undergoes several state changes:
+<ul>
+<li>Status is set back to <code>StatusReady</code>, making it available in the <code>c.readyTasks</code> queue.</li>
+<li><code>Worker</code> (assigned worker ID) is cleared.</li>
+<li><code>StartTime</code> is reset.</li>
+<li><code>Output</code> (list of output files) is cleared, as any partial output is now suspect or irrelevant.</li>
+</ul>
+</li>
+<li><strong>Re-queue the Task:</strong> The reset task is added back to <code>c.readyTasks.AddTask(task)</code>. This ensures another worker can pick it up.</li>
+</ul>
+<p><em>Handling Lost Intermediate Data (Implicitly via Task Re-execution):</em>
+A critical aspect of fault tolerance in MapReduce, as highlighted by the paper, is managing the intermediate files produced by map tasks. These are typically stored on the local disks of the map workers. If a map worker completes its task successfully but then crashes before all relevant reduce tasks have consumed its intermediate output, those intermediate files are lost.
+Our current <code>checkWorkerStatus</code> implementation primarily focuses on retrying the actively running task of a worker that times out.</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt">1
+</span><span class="lnt">2
+</span><span class="lnt">3
+</span><span class="lnt">4
+</span><span class="lnt">5
+</span><span class="lnt">6
+</span><span class="lnt">7
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// In checkWorkerStatus, when a worker (workerId) times out:</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// ...</span>
+</span></span><span class="line"><span class="cl"><span class="nx">runningTask</span> <span class="o">:=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">runningTasks</span><span class="p">[</span><span class="nx">metadata</span><span class="p">.</span><span class="nx">runningTask</span><span class="p">]</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// ...</span>
+</span></span><span class="line"><span class="cl"><span class="nx">taskToRetry</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">taskToRetry</span><span class="p">,</span> <span class="nx">runningTask</span><span class="p">.</span><span class="nx">task</span><span class="p">)</span> <span class="c1">// The currently running task is added for retry</span>
+</span></span><span class="line"><span class="cl"><span class="nx">metadata</span><span class="p">.</span><span class="nx">runningTask</span> <span class="p">=</span> <span class="s">&#34;&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// ... task is reset and added back to c.readyTasks ...</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>This handles cases where a worker fails mid-task. But what about its previously completed  map tasks whose outputs are now gone?</p>
+<p><em>The Challenge of Retrying Previously Successful Map Tasks</em>
+One might initially think that upon a worker&rsquo;s crash, we should re-queue all map tasks that worker had successfully completed. The following (commented-out) snippet from an earlier version of <code>checkWorkerStatus</code> attempted this:</p>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Original (commented-out) consideration for retrying all successful map tasks of a crashed worker:</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Adding successful map tasks of this worker for retrial</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="nx">taskId</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">metadata</span><span class="p">.</span><span class="nx">successfulTasks</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">[</span><span class="nx">taskId</span><span class="p">]</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="o">&amp;&amp;</span> <span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">[</span><span class="nx">taskId</span><span class="p">].</span><span class="nx">Type</span> <span class="o">==</span> <span class="nx">MapType</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// If this task was indeed in the global success set and was a MapType:</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">taskToRetry</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">taskToRetry</span><span class="p">,</span> <span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">[</span><span class="nx">taskId</span><span class="p">])</span> <span class="c1">// Add it for retrial</span>
+</span></span><span class="line"><span class="cl">		<span class="nb">delete</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">successTasks</span><span class="p">,</span> <span class="nx">taskId</span><span class="p">)</span> <span class="c1">// Remove from global success set</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// CRITICAL: We would also need to increment c.pendingMappers here if it had been decremented</span>
+</span></span><span class="line"><span class="cl">		 <span class="nx">c</span><span class="p">.</span><span class="nx">pendingMappers</span><span class="o">++</span> 
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Tombstoning metadata of intermediate files produced by this worker</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// From global state so that downstream reduce workers get to know about the failure.</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// This would ideally cause reduce tasks that depend on this worker&#39;s output to fail</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// or wait, and get re-added after the map tasks are re-run.</span>
+</span></span><span class="line"><span class="cl"><span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">v</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">c</span><span class="p">.</span><span class="nx">intermediateFiles</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Mark intermediate files from this worker (workerId) as unavailable/invalid.</span>
+</span></span><span class="line"><span class="cl">	<span class="nb">delete</span><span class="p">(</span><span class="nx">v</span><span class="p">,</span> <span class="nx">workerId</span><span class="p">)</span> <span class="c1">// Or v[workerId] = nil if the structure supports it</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><p>When a map worker crashes after successfully writing its intermediate files, those files (on its local disk) are lost in a true distributed system. Our lab setup, where all workers share the host&rsquo;s filesystem, can sometimes mask this; a &lsquo;crashed&rsquo; worker&rsquo;s files might still be accessible. This is a crucial difference from a production environment.
+Simply re-queuing all successfully completed map tasks from a crashed worker can be inefficient:</p>
+<ul>
+<li>Performance Hit: It can lead to significant re-computation and potential test timeouts, especially if many map tasks were already done by a worker which crashed.</li>
+<li>Complexity: Managing <code>pendingMappers</code> and preventing reduce tasks from starting prematurely adds complexity if many map tasks are suddenly re-added.</li>
+</ul>
+<p><em>A More Targeted Optimization:</em>
+A more refined approach is to only re-run a successful map task from a crashed worker if its specific output intermediate partitions are actually needed by currently pending (not yet completed) reduce tasks.</p>
+<p>This involves:</p>
+<ol>
+<li>
+<p>Identifying which map tasks the crashed worker completed.</p>
+</li>
+<li>
+<p>Determining if their output partitions are required by any active or future reduce tasks.</p>
+</li>
+<li>
+<p>Only then, re-queueing those specific map tasks and invalidating their previous intermediate file locations.</p>
+</li>
+</ol>
+<p>This smarter retry avoids redundant work but increases coordinator complexity. For our lab, focusing on retrying the currently running task of a failed worker proved sufficient to pass the tests, partly due to the shared filesystem behaviour making the storage of intermediate files also in some sense to global filesystem</p>
+<p>In essence, <code>checkWorkerStatus</code> implements the &ldquo;timeout and retry&rdquo; strategy. It ensures that work assigned to unresponsive workers is not indefinitely stalled and is eventually re-assigned, which is fundamental for making progress in a distributed system prone to failures.</p>
+<ol start="5">
+<li><strong>Job Completion (Done)</strong>
+<code>main/mrcoordinator.go </code>periodically calls<code> Done()</code> to check if the entire job is finished.</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// main/mrcoordinator.go calls Done() periodically to find out</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// if the entire job has finished.</span>
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Coordinator</span><span class="p">)</span> <span class="nf">Done</span><span class="p">()</span> <span class="kt">bool</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// If the job is marked as finished and we haven&#39;t started the shutdown sequence for goroutines yet</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">c</span><span class="p">.</span><span class="nx">finished</span> <span class="o">&amp;&amp;</span> <span class="p">!</span><span class="nx">c</span><span class="p">.</span><span class="nx">shutdownSignaled</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[Coordinator Shutdown]: MR workflow completed. Signaling internal goroutines to stop.\n&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nb">close</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">done</span><span class="p">)</span>             <span class="c1">// Signal all listening goroutines</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">c</span><span class="p">.</span><span class="nx">shutdownSignaled</span> <span class="p">=</span> <span class="kc">true</span> <span class="c1">// Mark that we&#39;ve signaled them</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// If we have signaled for shutdown, but haven&#39;t yet confirmed all goroutines are done</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">c</span><span class="p">.</span><span class="nx">shutdownSignaled</span> <span class="o">&amp;&amp;</span> <span class="p">!</span><span class="nx">c</span><span class="p">.</span><span class="nx">allGoroutinesDone</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">c</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">c</span><span class="p">.</span><span class="nx">wg</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span> <span class="c1">// Wait for all goroutines (like the health checker) to call c.wg.Done()</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">c</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span> 
+</span></span><span class="line"><span class="cl">		<span class="nx">c</span><span class="p">.</span><span class="nx">allGoroutinesDone</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;[Coordinator Shutdown]: All internal goroutines have completed.\n&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">isCompletelyDone</span> <span class="o">:=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">finished</span> <span class="o">&amp;&amp;</span> <span class="nx">c</span><span class="p">.</span><span class="nx">allGoroutinesDone</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="nx">isCompletelyDone</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><h2 id="the-worker-mrworkergo">The Worker (<a href="https://github.com/harshrai654/6.5840/blob/lab0/src/mr/worker.go">mr/worker.go</a>)<a hidden class="anchor" aria-hidden="true" href="#the-worker-mrworkergo">#</a></h2>
+<p>The Worker process is responsible for executing the actual Map and Reduce functions as directed by the Coordinator. Each worker operates independently, requesting tasks, performing them, and reporting back the results.</p>
+<ol>
+<li>Worker&rsquo;s Main Loop (<code>Worker</code> function)
+The Worker function, called by <code>main/mrworker.go</code>, contains the main operational loop.</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">workerId</span> <span class="nx">WorkerId</span> <span class="p">=</span> <span class="nf">WorkerId</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nf">Getpid</span><span class="p">())</span> <span class="c1">// Unique ID for this worker process</span>
+</span></span><span class="line"><span class="cl"><span class="kd">var</span> <span class="nx">dirName</span> <span class="kt">string</span> <span class="p">=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;w-%d&#34;</span><span class="p">,</span> <span class="nx">workerId</span><span class="p">)</span> <span class="c1">// Worker-specific directory for temp files</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// ... (Log, ihash functions) ...</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// main/mrworker.go calls this function.</span>
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">Worker</span><span class="p">(</span><span class="nx">mapf</span> <span class="kd">func</span><span class="p">(</span><span class="kt">string</span><span class="p">,</span> <span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="nx">KeyValue</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">reducef</span> <span class="kd">func</span><span class="p">(</span><span class="kt">string</span><span class="p">,</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">string</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nf">Log</span><span class="p">(</span><span class="s">&#34;Started&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Create a worker-specific directory if it doesn&#39;t exist.</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Used for storing temporary files before atomic rename.</span>
+</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Stat</span><span class="p">(</span><span class="nx">dirName</span><span class="p">);</span> <span class="nx">os</span><span class="p">.</span><span class="nf">IsNotExist</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Mkdir</span><span class="p">(</span><span class="nx">dirName</span><span class="p">,</span> <span class="mo">0755</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// ... (error handling) ...</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">getTaskargs</span> <span class="o">:=</span> <span class="nx">GetTaskArgs</span><span class="p">{</span> <span class="c1">// Prepare args for GetTask RPC</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">WorkerId</span><span class="p">:</span> <span class="nx">workerId</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="p">{</span> <span class="c1">// Main loop: continuously ask for tasks</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">getTaskReply</span> <span class="o">:=</span> <span class="nx">GetTaskReply</span><span class="p">{}</span>
+</span></span><span class="line"><span class="cl">		<span class="nf">Log</span><span class="p">(</span><span class="s">&#34;Fetching task from coordinator...&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">ok</span> <span class="o">:=</span> <span class="nf">call</span><span class="p">(</span><span class="s">&#34;Coordinator.GetTask&#34;</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">getTaskargs</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">getTaskReply</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="k">if</span> <span class="nx">ok</span> <span class="p">{</span> <span class="c1">// Successfully contacted Coordinator</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">task</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">getTaskReply</span><span class="p">.</span><span class="nx">Task</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">nReduce</span> <span class="o">:=</span> <span class="nx">getTaskReply</span><span class="p">.</span><span class="nx">NR</span> <span class="c1">// Number of reduce partitions</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">			<span class="k">switch</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Type</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="k">case</span> <span class="nx">MapType</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">				<span class="nf">Log</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;Assigned map job with task id: %s&#34;</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">				<span class="nf">processMapTask</span><span class="p">(</span><span class="nx">task</span><span class="p">,</span> <span class="nx">nReduce</span><span class="p">,</span> <span class="nx">mapf</span><span class="p">)</span> <span class="c1">// Execute the map task</span>
+</span></span><span class="line"><span class="cl">			<span class="k">case</span> <span class="nx">ReduceType</span><span class="p">:</span>
+</span></span><span class="line"><span class="cl">				<span class="nf">Log</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;Assigned reduce job with task id: %s&#34;</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">intermediateFiles</span> <span class="o">:=</span> <span class="nx">getTaskReply</span><span class="p">.</span><span class="nx">IntermediateFiles</span> <span class="c1">// Get locations from Coordinator</span>
+</span></span><span class="line"><span class="cl">				<span class="nf">processReduceTask</span><span class="p">(</span><span class="nx">task</span><span class="p">,</span> <span class="nx">intermediateFiles</span><span class="p">,</span> <span class="nx">reducef</span><span class="p">)</span> <span class="c1">// Execute reduce task</span>
+</span></span><span class="line"><span class="cl">			<span class="k">default</span><span class="p">:</span> <span class="c1">// InvalidType or unknown</span>
+</span></span><span class="line"><span class="cl">				<span class="nf">Log</span><span class="p">(</span><span class="s">&#34;Invalid task recieved or no tasks available. Sleeping.&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">			<span class="c1">// If a valid task was processed (not InvalidType), report its status</span>
+</span></span><span class="line"><span class="cl">			<span class="k">if</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Type</span> <span class="o">!=</span> <span class="nx">InvalidType</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">reportTaskArgs</span> <span class="o">:=</span> <span class="nx">ReportTaskArgs</span><span class="p">{</span> <span class="nx">Task</span><span class="p">:</span> <span class="o">*</span><span class="nx">task</span> <span class="p">}</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">reportTaskReply</span> <span class="o">:=</span> <span class="nx">ReportTaskReply</span><span class="p">{}</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">ok</span> <span class="p">=</span> <span class="nf">call</span><span class="p">(</span><span class="s">&#34;Coordinator.ReportTask&#34;</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">reportTaskArgs</span><span class="p">,</span> <span class="o">&amp;</span><span class="nx">reportTaskReply</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">				<span class="k">if</span> <span class="p">!</span><span class="nx">ok</span> <span class="o">||</span> <span class="p">!</span><span class="nx">reportTaskReply</span><span class="p">.</span><span class="nx">Status</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">					<span class="nf">Log</span><span class="p">(</span><span class="s">&#34;Failed to report task or coordinator indicated an issue. Exiting.&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">					<span class="c1">// The lab hints that if a worker can&#39;t contact the coordinator,</span>
+</span></span><span class="line"><span class="cl">					<span class="c1">// it can assume the job is done and the coordinator has exited.</span>
+</span></span><span class="line"><span class="cl">					<span class="nf">removeLocalWorkerDirectory</span><span class="p">()</span> <span class="c1">// Clean up worker-specific directory</span>
+</span></span><span class="line"><span class="cl">					<span class="k">return</span>
+</span></span><span class="line"><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// Brief pause before asking for the next task.</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">time</span><span class="p">.</span><span class="nf">Sleep</span><span class="p">(</span><span class="nx">WORKER_SLEEP_DURATION</span><span class="p">)</span> <span class="c1">// WORKER_SLEEP_DURATION is 2s</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span> <span class="k">else</span> <span class="p">{</span> <span class="c1">// Failed to contact Coordinator</span>
+</span></span><span class="line"><span class="cl">			<span class="nf">Log</span><span class="p">(</span><span class="s">&#34;Failed to call &#39;Coordinator.GetTask&#39;! Coordinator not found or exited. Exiting worker.&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// removeLocalWorkerDirectory() // Cleanup if needed, though not strictly required by lab on exit</span>
+</span></span><span class="line"><span class="cl">			<span class="k">return</span> <span class="c1">// Exit the worker process</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li><em>Core Logic:</em> Continuously polls the Coordinator for tasks (<code>Coordinator.GetTask</code>). Based on the task type (<code>MapType</code> or <code>ReduceType</code>), it calls the respective processing function. After processing, it reports the outcome to the Coordinator (<code>Coordinator.ReportTask</code>).</li>
+<li><em>Exit Condition:</em> If communication with the Coordinator fails (e.g., <code>GetTask</code> RPC fails), the worker assumes the job is complete and the Coordinator has shut down, so the worker also exits. This is a simple shutdown mechanism compliant with the lab requirements.</li>
+<li><em>Local Directory:</em> Each worker maintains a local directory (<code>dirName like w-workerId</code>) for its temporary files, ensuring isolation before final output naming.</li>
+</ul>
+<ol start="2">
+<li>Processing Map Tasks (<code>processMapTask</code>)</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Processes map task by fetching `Filename` from Task</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// Calls provided mapf function and stores intermediate files after</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// paritioninng them based on `ihash` function</span>
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">processMapTask</span><span class="p">(</span><span class="nx">task</span> <span class="o">*</span><span class="nx">Task</span><span class="p">,</span> <span class="nx">nReduce</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">mapf</span> <span class="kd">func</span><span class="p">(</span><span class="kt">string</span><span class="p">,</span> <span class="kt">string</span><span class="p">)</span> <span class="p">[]</span><span class="nx">KeyValue</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nf">Log</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;Processing map task with id %s and file: %s&#34;</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Filename</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">file</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Open</span><span class="p">(</span><span class="nx">task</span><span class="p">.</span><span class="nx">Filename</span><span class="p">)</span> <span class="c1">// Open the input split (file)</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// ... (error handling: set task.Status = StatusError, return) ...</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">content</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">io</span><span class="p">.</span><span class="nf">ReadAll</span><span class="p">(</span><span class="nx">file</span><span class="p">)</span> <span class="c1">// Read the entire file content</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// ... (error handling: set task.Status = StatusError, return) ...</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">file</span><span class="p">.</span><span class="nf">Close</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">intermediate</span> <span class="o">:=</span> <span class="nf">mapf</span><span class="p">(</span><span class="nx">task</span><span class="p">.</span><span class="nx">Filename</span><span class="p">,</span> <span class="nb">string</span><span class="p">(</span><span class="nx">content</span><span class="p">))</span> <span class="c1">// Execute the user-defined map function</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Group intermediate key-value pairs by partition</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">buckets</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">int</span><span class="p">][]</span><span class="nx">KeyValue</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">kv</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">intermediate</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">partition</span> <span class="o">:=</span> <span class="nf">ihash</span><span class="p">(</span><span class="nx">kv</span><span class="p">.</span><span class="nx">Key</span><span class="p">)</span> <span class="o">%</span> <span class="nx">nReduce</span> <span class="c1">// Determine partition using ihash</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">buckets</span><span class="p">[</span><span class="nx">partition</span><span class="p">]</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">buckets</span><span class="p">[</span><span class="nx">partition</span><span class="p">],</span> <span class="nx">kv</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">task</span><span class="p">.</span><span class="nx">Output</span> <span class="p">=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{}</span> <span class="c1">// Clear previous output, prepare for new output filenames</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// For each partition, sort and write to a temporary intermediate file</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">partition</span><span class="p">,</span> <span class="nx">kva</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">buckets</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// In-memory sort for this partition&#39;s KeyValue pairs.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// The paper mentions external sort if data is too large, but here it&#39;s in-memory.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">sort</span><span class="p">.</span><span class="nf">Sort</span><span class="p">(</span><span class="nf">ByKey</span><span class="p">(</span><span class="nx">kva</span><span class="p">))</span> 
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// Create a temporary file in the worker&#39;s specific directory.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">tempFile</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">CreateTemp</span><span class="p">(</span><span class="nx">dirName</span><span class="p">,</span> <span class="s">&#34;mwt-*&#34;</span><span class="p">)</span> <span class="c1">// &#34;mwt&#34; for map worker temp</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// ... (error handling: set task.Status = StatusError, return) ...</span>
+</span></span><span class="line"><span class="cl">		
+</span></span><span class="line"><span class="cl">		<span class="nx">enc</span> <span class="o">:=</span> <span class="nx">json</span><span class="p">.</span><span class="nf">NewEncoder</span><span class="p">(</span><span class="nx">tempFile</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">kv</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">kva</span> <span class="p">{</span> <span class="c1">// Write sorted KeyValue pairs to the temp file using JSON encoding</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">err</span> <span class="o">:=</span> <span class="nx">enc</span><span class="p">.</span><span class="nf">Encode</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">kv</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// ... (error handling: set task.Status = StatusError, tempFile.Close(), return) ...</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">tempFile</span><span class="p">.</span><span class="nf">Close</span><span class="p">()</span> <span class="c1">// Close after writing</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// Atomically rename the temporary file to its final intermediate name.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// Filename format: mr-&lt;map_task_id&gt;-&lt;partition_number&gt; (e.g., mr-m-0-1)</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// Stored within the worker&#39;s directory: w-&lt;workerId&gt;/mr-m-0-1</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">intermediateFilename</span> <span class="o">:=</span> <span class="nx">filepath</span><span class="p">.</span><span class="nf">Join</span><span class="p">(</span><span class="nx">dirName</span><span class="p">,</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;mr-%s-%d&#34;</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span> <span class="nx">partition</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">err</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Rename</span><span class="p">(</span><span class="nx">tempFile</span><span class="p">.</span><span class="nf">Name</span><span class="p">(),</span> <span class="nx">intermediateFilename</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// ... (error handling: set task.Status = StatusError, return) ...</span>
+</span></span><span class="line"><span class="cl">		
+</span></span><span class="line"><span class="cl">		<span class="nx">task</span><span class="p">.</span><span class="nx">Output</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">task</span><span class="p">.</span><span class="nx">Output</span><span class="p">,</span> <span class="nx">intermediateFilename</span><span class="p">)</span> <span class="c1">// Add final filename to task&#39;s output list</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">task</span><span class="p">.</span><span class="nx">Status</span> <span class="p">=</span> <span class="nx">StatusSuccess</span> <span class="c1">// Mark task as successful</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li><em>Core Logic:</em> Reads the assigned input file, applies the user-defined <code>mapf</code>, partitions the output KeyValue pairs using <code>ihash() % nReduce</code>, sorts each partition&rsquo;s data <em>in memory</em>, and writes it to a uniquely named intermediate file within its local directory.</li>
+<li><em>Intermediate Files:</em> Output filenames (e.g., <code>w-workerId/mr-mapTaskID-partitionID</code>) are collected in <code>task.Output</code>.</li>
+<li><em>Atomic Rename:</em> Uses <code>os.Rename</code> to make intermediate files visible only once fully written, preventing partial reads by reducers. This is crucial for consistency, especially if crashes occur.</li>
+<li><em>In-Memory Sort:</em> A simplification for the lab; a production system might use external sorting if intermediate data for a partition is too large for memory.</li>
+</ul>
+<ol start="3">
+<li>Processing Reduce Tasks (<code>processReduceTask</code>)</li>
+</ol>
+<div class="highlight"><div class="chroma">
+<table class="lntable"><tr><td class="lntd">
+<pre tabindex="0" class="chroma"><code><span class="lnt"> 1
+</span><span class="lnt"> 2
+</span><span class="lnt"> 3
+</span><span class="lnt"> 4
+</span><span class="lnt"> 5
+</span><span class="lnt"> 6
+</span><span class="lnt"> 7
+</span><span class="lnt"> 8
+</span><span class="lnt"> 9
+</span><span class="lnt">10
+</span><span class="lnt">11
+</span><span class="lnt">12
+</span><span class="lnt">13
+</span><span class="lnt">14
+</span><span class="lnt">15
+</span><span class="lnt">16
+</span><span class="lnt">17
+</span><span class="lnt">18
+</span><span class="lnt">19
+</span><span class="lnt">20
+</span><span class="lnt">21
+</span><span class="lnt">22
+</span><span class="lnt">23
+</span><span class="lnt">24
+</span><span class="lnt">25
+</span><span class="lnt">26
+</span><span class="lnt">27
+</span><span class="lnt">28
+</span><span class="lnt">29
+</span><span class="lnt">30
+</span><span class="lnt">31
+</span><span class="lnt">32
+</span><span class="lnt">33
+</span><span class="lnt">34
+</span><span class="lnt">35
+</span><span class="lnt">36
+</span><span class="lnt">37
+</span><span class="lnt">38
+</span><span class="lnt">39
+</span><span class="lnt">40
+</span><span class="lnt">41
+</span><span class="lnt">42
+</span><span class="lnt">43
+</span><span class="lnt">44
+</span><span class="lnt">45
+</span><span class="lnt">46
+</span><span class="lnt">47
+</span><span class="lnt">48
+</span><span class="lnt">49
+</span><span class="lnt">50
+</span><span class="lnt">51
+</span><span class="lnt">52
+</span><span class="lnt">53
+</span><span class="lnt">54
+</span><span class="lnt">55
+</span><span class="lnt">56
+</span><span class="lnt">57
+</span><span class="lnt">58
+</span><span class="lnt">59
+</span><span class="lnt">60
+</span><span class="lnt">61
+</span><span class="lnt">62
+</span><span class="lnt">63
+</span><span class="lnt">64
+</span><span class="lnt">65
+</span><span class="lnt">66
+</span><span class="lnt">67
+</span><span class="lnt">68
+</span><span class="lnt">69
+</span><span class="lnt">70
+</span><span class="lnt">71
+</span><span class="lnt">72
+</span><span class="lnt">73
+</span><span class="lnt">74
+</span><span class="lnt">75
+</span></code></pre></td>
+<td class="lntd">
+<pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">processReduceTask</span><span class="p">(</span><span class="nx">task</span> <span class="o">*</span><span class="nx">Task</span><span class="p">,</span> <span class="nx">intermediateFiles</span> <span class="kd">map</span><span class="p">[</span><span class="nx">WorkerId</span><span class="p">][]</span><span class="kt">string</span><span class="p">,</span> <span class="nx">reducef</span> <span class="kd">func</span><span class="p">(</span><span class="kt">string</span><span class="p">,</span> <span class="p">[]</span><span class="kt">string</span><span class="p">)</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">error</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nf">Log</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;Processing reduce task with id %s for partition key %s&#34;</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Id</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Filename</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Create a temporary output file in the worker&#39;s directory</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">tempReduceFile</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">CreateTemp</span><span class="p">(</span><span class="nx">dirName</span><span class="p">,</span> <span class="s">&#34;mwt-*&#34;</span><span class="p">)</span> <span class="c1">// &#34;mwt&#34; for map worker temp (could be &#34;rwt&#34;)</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// ... (error handling: set task.Status = StatusError, return) ...</span>
+</span></span><span class="line"><span class="cl">	<span class="k">defer</span> <span class="nx">tempReduceFile</span><span class="p">.</span><span class="nf">Close</span><span class="p">()</span> <span class="c1">// Ensure temp file is closed</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="kd">var</span> <span class="nx">kva</span> <span class="p">[]</span><span class="nx">KeyValue</span> <span class="c1">// To store all KeyValue pairs for this reduce partition</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Gather all intermediate data for this reduce task&#39;s partition from various map workers.</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// `intermediateFiles` (map[WorkerId][]string) comes from the Coordinator,</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// mapping map worker IDs to the list of intermediate files they produced for *this specific partition*.</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">mapWorkerId</span><span class="p">,</span> <span class="nx">filesFromMapWorker</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">intermediateFiles</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">filename</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">filesFromMapWorker</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nf">Log</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;Processing intermediate file %s from map worker %d&#34;</span><span class="p">,</span> <span class="nx">filename</span><span class="p">,</span> <span class="nx">mapWorkerId</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">intermediateFile</span><span class="p">,</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Open</span><span class="p">(</span><span class="nx">filename</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="c1">// ... (error handling: set task.Status = StatusError, return) ...</span>
+</span></span><span class="line"><span class="cl">			
+</span></span><span class="line"><span class="cl">			<span class="nx">dec</span> <span class="o">:=</span> <span class="nx">json</span><span class="p">.</span><span class="nf">NewDecoder</span><span class="p">(</span><span class="nx">intermediateFile</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="k">for</span> <span class="p">{</span> <span class="c1">// Read all KeyValue pairs from this intermediate file</span>
+</span></span><span class="line"><span class="cl">				<span class="kd">var</span> <span class="nx">kv</span> <span class="nx">KeyValue</span>
+</span></span><span class="line"><span class="cl">				<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">dec</span><span class="p">.</span><span class="nf">Decode</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">kv</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">					<span class="k">if</span> <span class="nx">err</span> <span class="o">!=</span> <span class="nx">io</span><span class="p">.</span><span class="nx">EOF</span> <span class="p">{</span> <span class="c1">// Handle actual decoding errors</span>
+</span></span><span class="line"><span class="cl">						<span class="nf">Log</span><span class="p">(</span><span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;Error decoding KV from intermediate file %s: %v&#34;</span><span class="p">,</span> <span class="nx">filename</span><span class="p">,</span> <span class="nx">err</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">						<span class="nx">task</span><span class="p">.</span><span class="nx">Status</span> <span class="p">=</span> <span class="nx">StatusError</span>
+</span></span><span class="line"><span class="cl">						<span class="nx">intermediateFile</span><span class="p">.</span><span class="nf">Close</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">						<span class="k">return</span> <span class="nx">err</span>
+</span></span><span class="line"><span class="cl">					<span class="p">}</span>
+</span></span><span class="line"><span class="cl">					<span class="k">break</span> <span class="c1">// EOF reached</span>
+</span></span><span class="line"><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">kva</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">kva</span><span class="p">,</span> <span class="nx">kv</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">intermediateFile</span><span class="p">.</span><span class="nf">Close</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Sort all collected KeyValue pairs by key. This groups identical keys together.</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// This is Step 5 of the paper: &#34;When a reduce worker has read all intermediate data,</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// it sorts it by the intermediate keys...&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Again, this is an in-memory sort of all data for this partition.</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">sort</span><span class="p">.</span><span class="nf">Sort</span><span class="p">(</span><span class="nf">ByKey</span><span class="p">(</span><span class="nx">kva</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Iterate over sorted data, apply reducef for each unique key</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">i</span> <span class="o">:=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="cl">	<span class="k">for</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">kva</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">j</span> <span class="o">:=</span> <span class="nx">i</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// Find all values for the current key kva[i].Key</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="nx">j</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">kva</span><span class="p">)</span> <span class="o">&amp;&amp;</span> <span class="nx">kva</span><span class="p">[</span><span class="nx">j</span><span class="p">].</span><span class="nx">Key</span> <span class="o">==</span> <span class="nx">kva</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">Key</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">j</span><span class="o">++</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">values</span> <span class="o">:=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{}</span>
+</span></span><span class="line"><span class="cl">		<span class="k">for</span> <span class="nx">k</span> <span class="o">:=</span> <span class="nx">i</span><span class="p">;</span> <span class="nx">k</span> <span class="p">&lt;</span> <span class="nx">j</span><span class="p">;</span> <span class="nx">k</span><span class="o">++</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">values</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">values</span><span class="p">,</span> <span class="nx">kva</span><span class="p">[</span><span class="nx">k</span><span class="p">].</span><span class="nx">Value</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="cl">		
+</span></span><span class="line"><span class="cl">		<span class="nx">output</span> <span class="o">:=</span> <span class="nf">reducef</span><span class="p">(</span><span class="nx">kva</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">Key</span><span class="p">,</span> <span class="nx">values</span><span class="p">)</span> <span class="c1">// Execute user-defined reduce function</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">		<span class="c1">// Write output in the format &#34;key value\n&#34; to the temporary reduce file.</span>
+</span></span><span class="line"><span class="cl">		<span class="c1">// This matches main/mrsequential.go and the lab&#39;s expected output format.</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">fmt</span><span class="p">.</span><span class="nf">Fprintf</span><span class="p">(</span><span class="nx">tempReduceFile</span><span class="p">,</span> <span class="s">&#34;%v %v\n&#34;</span><span class="p">,</span> <span class="nx">kva</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">Key</span><span class="p">,</span> <span class="nx">output</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">i</span> <span class="p">=</span> <span class="nx">j</span> <span class="c1">// Move to the next unique key</span>
+</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="c1">// Atomically rename the temporary output file to its final name (e.g., mr-out-0).</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// The final output file is placed in the current directory (mr-tmp/ during tests),</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// not the worker-specific one, as it&#39;s global output.</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">finalOutputFileName</span> <span class="o">:=</span> <span class="nx">fmt</span><span class="p">.</span><span class="nf">Sprintf</span><span class="p">(</span><span class="s">&#34;mr-out-%s&#34;</span><span class="p">,</span> <span class="nx">task</span><span class="p">.</span><span class="nx">Filename</span><span class="p">)</span> <span class="c1">// task.Filename is the partition key (e.g., &#34;0&#34;, &#34;1&#34;)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">err</span> <span class="p">=</span> <span class="nx">os</span><span class="p">.</span><span class="nf">Rename</span><span class="p">(</span><span class="nx">tempReduceFile</span><span class="p">.</span><span class="nf">Name</span><span class="p">(),</span> <span class="nx">finalOutputFileName</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// ... (error handling: set task.Status = StatusError, return) ...</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">task</span><span class="p">.</span><span class="nx">Output</span> <span class="p">=</span> <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="nx">finalOutputFileName</span><span class="p">}</span> <span class="c1">// Record final output filename</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">task</span><span class="p">.</span><span class="nx">Status</span> <span class="p">=</span> <span class="nx">StatusSuccess</span>
+</span></span><span class="line"><span class="cl">	<span class="k">return</span> <span class="kc">nil</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span></code></pre></td></tr></table>
+</div>
+</div><ul>
+<li><em>Core Logic:</em> Gathers all intermediate <code>KeyValue</code> pairs for its assigned partition (identified by <code>task.Filename</code>) from the locations provided by the Coordinator (<code>intermediateFiles</code>). It then sorts all these <code>KeyValue</code> pairs together, groups them by unique key, applies the user-defined <code>reducef</code> for each key and its list of values, and writes the final output.</li>
+<li><em>Data Aggregation</em>: Reads from multiple intermediate files <em>(potentially from different map workers)</em> that correspond to its specific partition.</li>
+<li><em>Global Sort (for the partition):</em> All <code>KeyValue</code> pairs for the partition are sorted together in memory before reduction. This is essential for grouping values for the same key.</li>
+<li><em>Final Output:</em> Writes output to a <em>temporary file and then atomically renames it to the final output file name (e.g., mr-out-X)</em>, which is placed in the main job directory (not the worker&rsquo;s specific temp directory).</li>
+<li><em>In-Memory Sort:</em> Similar to map tasks, all data for a reduce partition is sorted in memory.</li>
+</ul>
+<h1 id="conclusion">Conclusion<a hidden class="anchor" aria-hidden="true" href="#conclusion">#</a></h1>
+<p>Working on this MapReduce project taught me a lot about Go’s concurrency features, how to use RPC for process communication, and how the MapReduce framework organizes big data jobs. Most importantly, I learned to think about what can go wrong in distributed systems and how to handle failures gracefully. It’s been a great hands-on way to understand the real challenges behind large-scale data processing.</p>
+<h1 id="references">References<a hidden class="anchor" aria-hidden="true" href="#references">#</a></h1>
+<ul>
+<li><a href="https://pdos.csail.mit.edu/6.824/labs/lab-mr.html">https://pdos.csail.mit.edu/6.824/labs/lab-mr.html</a></li>
+<li><a href="https://pdos.csail.mit.edu/6.824/papers/mapreduce.pdf">https://pdos.csail.mit.edu/6.824/papers/mapreduce.pdf</a></li>
+<li><a href="https://github.com/harshrai654/6.5840/tree/lab0/src">https://github.com/harshrai654/6.5840/tree/lab0/src</a></li>
+</ul>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+<nav class="paginav">
+  <a class="next" href="http://localhost:1313/blogs/debugging-redis-latency/">
+    <span class="title">Next »</span>
+    <br>
+    <span>Debugging Redis Latency</span>
+  </a>
+</nav>
+
+
+<ul class="share-buttons">
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Map Reduce on x"
+            href="https://x.com/intent/tweet/?text=Map%20Reduce&amp;url=http%3a%2f%2flocalhost%3a1313%2fblogs%2fmap-reduce%2f&amp;hashtags=">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M512 62.554 L 512 449.446 C 512 483.97 483.97 512 449.446 512 L 62.554 512 C 28.03 512 0 483.97 0 449.446 L 0 62.554 C 0 28.03 28.029 0 62.554 0 L 449.446 0 C 483.971 0 512 28.03 512 62.554 Z M 269.951 190.75 L 182.567 75.216 L 56 75.216 L 207.216 272.95 L 63.9 436.783 L 125.266 436.783 L 235.9 310.383 L 332.567 436.783 L 456 436.783 L 298.367 228.367 L 432.367 75.216 L 371.033 75.216 Z M 127.633 110 L 164.101 110 L 383.481 400.065 L 349.5 400.065 Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Map Reduce on linkedin"
+            href="https://www.linkedin.com/shareArticle?mini=true&amp;url=http%3a%2f%2flocalhost%3a1313%2fblogs%2fmap-reduce%2f&amp;title=Map%20Reduce&amp;summary=Map%20Reduce&amp;source=http%3a%2f%2flocalhost%3a1313%2fblogs%2fmap-reduce%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-288.985,423.278l0,-225.717l-75.04,0l0,225.717l75.04,0Zm270.539,0l0,-129.439c0,-69.333 -37.018,-101.586 -86.381,-101.586c-39.804,0 -57.634,21.891 -67.617,37.266l0,-31.958l-75.021,0c0.995,21.181 0,225.717 0,225.717l75.02,0l0,-126.056c0,-6.748 0.486,-13.492 2.474,-18.315c5.414,-13.475 17.767,-27.434 38.494,-27.434c27.135,0 38.007,20.707 38.007,51.037l0,120.768l75.024,0Zm-307.552,-334.556c-25.674,0 -42.448,16.879 -42.448,39.002c0,21.658 16.264,39.002 41.455,39.002l0.484,0c26.165,0 42.452,-17.344 42.452,-39.002c-0.485,-22.092 -16.241,-38.954 -41.943,-39.002Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Map Reduce on reddit"
+            href="https://reddit.com/submit?url=http%3a%2f%2flocalhost%3a1313%2fblogs%2fmap-reduce%2f&title=Map%20Reduce">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-3.446,265.638c0,-22.964 -18.616,-41.58 -41.58,-41.58c-11.211,0 -21.361,4.457 -28.841,11.666c-28.424,-20.508 -67.586,-33.757 -111.204,-35.278l18.941,-89.121l61.884,13.157c0.756,15.734 13.642,28.29 29.56,28.29c16.407,0 29.706,-13.299 29.706,-29.701c0,-16.403 -13.299,-29.702 -29.706,-29.702c-11.666,0 -21.657,6.792 -26.515,16.578l-69.105,-14.69c-1.922,-0.418 -3.939,-0.042 -5.585,1.036c-1.658,1.073 -2.811,2.761 -3.224,4.686l-21.152,99.438c-44.258,1.228 -84.046,14.494 -112.837,35.232c-7.468,-7.164 -17.589,-11.591 -28.757,-11.591c-22.965,0 -41.585,18.616 -41.585,41.58c0,16.896 10.095,31.41 24.568,37.918c-0.639,4.135 -0.99,8.328 -0.99,12.576c0,63.977 74.469,115.836 166.33,115.836c91.861,0 166.334,-51.859 166.334,-115.836c0,-4.218 -0.347,-8.387 -0.977,-12.493c14.564,-6.47 24.735,-21.034 24.735,-38.001Zm-119.474,108.193c-20.27,20.241 -59.115,21.816 -70.534,21.816c-11.428,0 -50.277,-1.575 -70.522,-21.82c-3.007,-3.008 -3.007,-7.882 0,-10.889c3.003,-2.999 7.882,-3.003 10.885,0c12.777,12.781 40.11,17.317 59.637,17.317c19.522,0 46.86,-4.536 59.657,-17.321c3.016,-2.999 7.886,-2.995 10.885,0.008c3.008,3.011 3.003,7.882 -0.008,10.889Zm-5.23,-48.781c-16.373,0 -29.701,-13.324 -29.701,-29.698c0,-16.381 13.328,-29.714 29.701,-29.714c16.378,0 29.706,13.333 29.706,29.714c0,16.374 -13.328,29.698 -29.706,29.698Zm-160.386,-29.702c0,-16.381 13.328,-29.71 29.714,-29.71c16.369,0 29.689,13.329 29.689,29.71c0,16.373 -13.32,29.693 -29.689,29.693c-16.386,0 -29.714,-13.32 -29.714,-29.693Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Map Reduce on facebook"
+            href="https://facebook.com/sharer/sharer.php?u=http%3a%2f%2flocalhost%3a1313%2fblogs%2fmap-reduce%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-106.468,0l0,-192.915l66.6,0l12.672,-82.621l-79.272,0l0,-53.617c0,-22.603 11.073,-44.636 46.58,-44.636l36.042,0l0,-70.34c0,0 -32.71,-5.582 -63.982,-5.582c-65.288,0 -107.96,39.569 -107.96,111.204l0,62.971l-72.573,0l0,82.621l72.573,0l0,192.915l-191.104,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Map Reduce on whatsapp"
+            href="https://api.whatsapp.com/send?text=Map%20Reduce%20-%20http%3a%2f%2flocalhost%3a1313%2fblogs%2fmap-reduce%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-58.673,127.703c-33.842,-33.881 -78.847,-52.548 -126.798,-52.568c-98.799,0 -179.21,80.405 -179.249,179.234c-0.013,31.593 8.241,62.428 23.927,89.612l-25.429,92.884l95.021,-24.925c26.181,14.28 55.659,21.807 85.658,21.816l0.074,0c98.789,0 179.206,-80.413 179.247,-179.243c0.018,-47.895 -18.61,-92.93 -52.451,-126.81Zm-126.797,275.782l-0.06,0c-26.734,-0.01 -52.954,-7.193 -75.828,-20.767l-5.441,-3.229l-56.386,14.792l15.05,-54.977l-3.542,-5.637c-14.913,-23.72 -22.791,-51.136 -22.779,-79.287c0.033,-82.142 66.867,-148.971 149.046,-148.971c39.793,0.014 77.199,15.531 105.329,43.692c28.128,28.16 43.609,65.592 43.594,105.4c-0.034,82.149 -66.866,148.983 -148.983,148.984Zm81.721,-111.581c-4.479,-2.242 -26.499,-13.075 -30.604,-14.571c-4.105,-1.495 -7.091,-2.241 -10.077,2.241c-2.986,4.483 -11.569,14.572 -14.182,17.562c-2.612,2.988 -5.225,3.364 -9.703,1.12c-4.479,-2.241 -18.91,-6.97 -36.017,-22.23c-13.314,-11.876 -22.304,-26.542 -24.916,-31.026c-2.612,-4.484 -0.279,-6.908 1.963,-9.14c2.016,-2.007 4.48,-5.232 6.719,-7.847c2.24,-2.615 2.986,-4.484 4.479,-7.472c1.493,-2.99 0.747,-5.604 -0.374,-7.846c-1.119,-2.241 -10.077,-24.288 -13.809,-33.256c-3.635,-8.733 -7.327,-7.55 -10.077,-7.688c-2.609,-0.13 -5.598,-0.158 -8.583,-0.158c-2.986,0 -7.839,1.121 -11.944,5.604c-4.105,4.484 -15.675,15.32 -15.675,37.364c0,22.046 16.048,43.342 18.287,46.332c2.24,2.99 31.582,48.227 76.511,67.627c10.685,4.615 19.028,7.371 25.533,9.434c10.728,3.41 20.492,2.929 28.209,1.775c8.605,-1.285 26.499,-10.833 30.231,-21.295c3.732,-10.464 3.732,-19.431 2.612,-21.298c-1.119,-1.869 -4.105,-2.99 -8.583,-5.232Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Map Reduce on telegram"
+            href="https://telegram.me/share/url?text=Map%20Reduce&amp;url=http%3a%2f%2flocalhost%3a1313%2fblogs%2fmap-reduce%2f">
+            <svg version="1.1" xml:space="preserve" viewBox="2 2 28 28" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M26.49,29.86H5.5a3.37,3.37,0,0,1-2.47-1,3.35,3.35,0,0,1-1-2.47V5.48A3.36,3.36,0,0,1,3,3,3.37,3.37,0,0,1,5.5,2h21A3.38,3.38,0,0,1,29,3a3.36,3.36,0,0,1,1,2.46V26.37a3.35,3.35,0,0,1-1,2.47A3.38,3.38,0,0,1,26.49,29.86Zm-5.38-6.71a.79.79,0,0,0,.85-.66L24.73,9.24a.55.55,0,0,0-.18-.46.62.62,0,0,0-.41-.17q-.08,0-16.53,6.11a.59.59,0,0,0-.41.59.57.57,0,0,0,.43.52l4,1.24,1.61,4.83a.62.62,0,0,0,.63.43.56.56,0,0,0,.4-.17L16.54,20l4.09,3A.9.9,0,0,0,21.11,23.15ZM13.8,20.71l-1.21-4q8.72-5.55,8.78-5.55c.15,0,.23,0,.23.16a.18.18,0,0,1,0,.06s-2.51,2.3-7.52,6.8Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Map Reduce on ycombinator"
+            href="https://news.ycombinator.com/submitlink?t=Map%20Reduce&u=http%3a%2f%2flocalhost%3a1313%2fblogs%2fmap-reduce%2f">
+            <svg version="1.1" xml:space="preserve" width="30px" height="30px" viewBox="0 0 512 512" fill="currentColor"
+                xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+                <path
+                    d="M449.446 0C483.971 0 512 28.03 512 62.554L512 449.446C512 483.97 483.97 512 449.446 512L62.554 512C28.03 512 0 483.97 0 449.446L0 62.554C0 28.03 28.029 0 62.554 0L449.446 0ZM183.8767 87.9921H121.8427L230.6673 292.4508V424.0079H281.3328V292.4508L390.1575 87.9921H328.1233L256 238.2489z" />
+            </svg>
+        </a>
+    </li>
+</ul>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="http://localhost:1313/blogs/">Learning Loop</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'copied!';
+            setTimeout(() => {
+                copybutton.innerHTML = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>

@@ -1,0 +1,10 @@
+:root {
+  --main-width: 45%; /* Adjust this value as needed. You can use px, %, rem, etc. */
+}
+.header > .container, /* If the structure is header > div.container */
+.header .nav {
+  /* Or if there's a .nav element inside the header */
+  max-width: var(--main-width); /* Explicitly set it */
+  margin-left: auto;
+  margin-right: auto;
+}
