@@ -9,7 +9,7 @@ category: Distributed Systems
 This article shares learnings from Google's influential MapReduce paper and explores the challenges encountered while implementing a simplified version. Our system uses multiple worker processes, running on a single machine and communicating via RPC, to mimic key aspects of a distributed environment.
 
 # What is Map-Reduce
-At its core, MapReduce is a programming model and an associated framework for processing and generating massive datasets using a parallel, distributed algorithm, typically on a cluster of computers. You might already be familiar with map and reduce operations from functional programming languages. For instance, in JavaScript, array.map() transforms each element of an array independently based on a mapper function, while array.reduce() iterates through an array, applying a reducer function to accumulate its elements into a single output value (e.g., a sum, or a new, aggregated object).
+At its core, MapReduce is a programming model and an associated framework for processing and generating massive datasets using a parallel, distributed algorithm, typically on a cluster of computers. You might already be familiar with `map` and `reduce` operations from functional programming languages. For instance, in JavaScript, `array.map()` transforms each element of an array independently based on a mapper function, while `array.reduce()` iterates through an array, applying a reducer function to accumulate its elements into a single output value (e.g., a sum, or a new, aggregated object).
 
 The MapReduce paradigm, brilliantly scales these fundamental concepts to tackle data processing challenges that are orders of magnitude larger than what a single machine can handle. The general flow typically involves several key stages:
 
@@ -17,9 +17,9 @@ The MapReduce paradigm, brilliantly scales these fundamental concepts to tackle
 
 2. Map Phase: A user-defined Map function is applied to each input chunk in parallel across many worker machines. The Map function takes an input pair (e.g., a document ID and its content) and produces a set of intermediate key/value pairs. For example, in a word count application, a Map function might take a line of text and output a key/value pair for each word, like (word, 1).
 
-3. Shuffle and Sort Phase: This is a critical intermediate step. The framework gathers all intermediate key/value pairs produced by the Map tasks, sorts them by key, and groups together all values associated with the same intermediate key. This ensures that all occurrences of (word, 1) for a specific 'word' are brought to the same place for the next phase.
+3. Shuffle and Sort Phase: This is a critical intermediate step. The framework gathers all intermediate key/value pairs produced by the Map tasks, sorts them by key, and groups together all values associated with the same intermediate key. This ensures that all occurrences of (word, 1) for a specific **'word'** are brought to the same place for the next phase.
 
-4. Reduce Phase: A user-defined Reduce function then processes the grouped data for each unique key, also in parallel. The Reduce function takes an intermediate key and a list of all values associated with that key. It iterates through these values to produce a final output, often zero or one output value. Continuing the word count example, the Reduce function for a given word would receive (word, [1, 1, 1, ...]) and sum these ones to produce the total count, e.g., (word, total_count).
+4. Reduce Phase: A user-defined Reduce function then processes the grouped data for each unique key, also in parallel. The Reduce function takes an intermediate key and a list of all values associated with that key. It iterates through these values to produce a final output, often zero or one output value. Continuing the word count example, the Reduce function for a given word would receive (**word, [1, 1, 1, ...]**) and sum these ones to produce the total count, e.g., (**word, total_count**).
 
 This distributed approach is highly effective for several reasons:
 
@@ -41,10 +41,10 @@ Here's a breakdown of the key stages:
 
 1.  **Initialization & Input Splitting (Diagram: User Program forks Master, Input files split)**:
 	- The MapReduce library first divides the input files into `M` smaller, manageable pieces called splits (e.g., split 0 to split 4 in the diagram). Each split is typically `16-64MB`.
-	- The User Program then starts multiple copies of the program on a cluster. One copy becomes the Master, and the others become Workers. Here the binary contains logic for master and worker.
+	- The User Program then starts multiple copies of the program on a cluster. One copy becomes the Master, and the others become Workers. Here the binary contains logic for master and worker as part of map-reduce library.
 	
 2. **Task Assignment by Master (Diagram: Master assigns map/reduce to workers)**:
-	- The Master is the central coordinator. It's responsible for assigning tasks to idle workers. There are M map tasks (one for each input split) and R reduce tasks (a number chosen by the user for the desired level of output parallelism).
+	- The Master is the central coordinator. It's responsible for assigning tasks to idle workers. There are `M` map tasks (one for each input split) and `R` reduce tasks (a number chosen by the user for the desired level of output parallelism).
 	
 3. **Map Phase -  Processing Input Splits (Diagram: worker (3) reads split, (4) local write)**:
 	- A worker assigned a map task reads the content of its designated input split (e.g., split 2).
@@ -61,18 +61,18 @@ Here's a breakdown of the key stages:
 	- The worker then iterates through the sorted data. For each unique intermediate key, it calls the user-defined Reduce function, passing the key and the list of all associated intermediate values.
 	- The output of the Reduce function is appended to a final output file for that specific reduce partition (e.g., output file 0, output file 1). There will be R such output files.
 5. **Job Completion:**
-	- When all M map tasks and R reduce tasks have successfully completed, the Master signals the original User Program.
-	- The MapReduce call in the user code returns, and the results are available in the R output files.
+	- When all `M` map tasks and `R` reduce tasks have successfully completed, the Master signals the original User Program.
+	- The `MapReduce` call in the user code returns, and the results are available in the `R` output files.
 
 Key Design Decisions:
 - **Abstraction:** Developers focus on `Map` and `Reduce` logic, while the framework manages distributed complexities like data partitioning, parallel execution, and shuffling.
 - **Inherent Fault Tolerance:** The system is designed for resilience against common failures:
 	- The Master detects worker failures. If a worker assigned a map task fails, the task is re-assigned because its input split is durable.
-	- More subtly, if a worker completes a map task (producing intermediate files on its local disk) but then fails before all necessary reduce tasks have read those intermediate files, those files are lost. The Master must then reschedule that original map task on another worker to regenerate its intermediate output. 
+	- More subtly, if a worker completes a map task (producing intermediate files on its local disk) but then fails before all necessary reduce tasks have read those intermediate files, those files are lost. *The Master must then reschedule that original map task on another worker to regenerate its intermediate output.* 
 	- If a worker assigned a reduce task fails, that reduce task can be re-executed by another worker.
 	- However, once a reduce task completes successfully and writes its final output (e.g., to mr-out-X), that output is considered final. The system aims to avoid re-executing successfully completed reduce tasks, relying on the durability of their output.
 
-One important aspect to note is that intermediate files are stored on the local file system of the worker nodes that produce them. This design choice is deliberate: by keeping intermediate data local, the *system significantly reduces network bandwidth consumption and potential network congestion that would arise if all intermediate data had to be written to, and read from, a global file system.* However, this means that crashes in map worker nodes can result in the loss of their locally stored intermediate data, necessitating the re-execution of those map tasks.
+One important aspect to note is that intermediate files are stored on the local file system of the worker nodes that produce them. This design choice is deliberate: by keeping intermediate data local, the *system significantly reduces network bandwidth consumption and potential network congestion that would arise if all intermediate data had to be written to, and read from, a global file system.* However, this means that crashes in map worker nodes can result in the loss of their locally stored intermediate data, requiring the re-execution of those map tasks.
 
 In contrast, the final outputs of worker processes executing the reduce operation are typically written to a global, distributed file system (like GFS in Google's case). Once a reduce task successfully writes its output to this global system, it's considered durable and generally does not need to be re-executed, even if the worker that produced it later fails.
 
@@ -216,8 +216,8 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 ```
 
 - Initially, `M` map tasks are created (one for each input file) and added to `readyTasks`.
--  Contrary to the paper we can only run reduce tasks only when all mapper tasks are finished as input for a reduce task may require intermediate file output(s) from more than one map task since a map task produces at max `R` intermediate partition files,  each designated to one reduce task and reduce workers needs to fetch these intermediate files from each of the mapper worker's local file system.
-- An RPC server (`c.server()`) is started for worker communication, and a background `goroutine (checkWorkerStatus)` is launched for fault tolerance. All shared state within the Coordinator (e.g., task lists, worker metadata) must be protected by mutexes (as seen in its methods like `GetTask`, `ReportTask`) since the shared state can be accessed by multiple go routines handling RPC calls from various worker processed which may lead to race conditions.
+-  Contrary to the paper *we can only run reduce tasks only when all mapper tasks are finished* as input for a reduce task may require intermediate file output(s) from more than one map task since a map task produces at max `R` intermediate partition files,  each designated to one reduce task and reduce workers needs to fetch these intermediate files from each of the mapper worker's local file system.
+- An RPC server (`c.server()`) is started for worker communication, and a background `goroutine (checkWorkerStatus)` is launched for fault tolerance. All shared state within the Coordinator (e.g., task lists, worker metadata) must be protected by mutexes (as seen in its methods like `GetTask`, `ReportTask`) since the shared state can be accessed by multiple go routines handling RPC calls from various workers processes which may lead to race conditions.
 - 
 
 2. **Assigning Tasks to Workers (`GetTask` RPC Handler)**
@@ -325,7 +325,7 @@ func (c *Coordinator) GetTask(args *GetTaskArgs, reply *GetTaskReply) error {
 ```
 - As defined in the paper's step-2 of the execution flow this method is called by various workers to request task which are in `readyTasks`. 
 - It deals with scenarios like workers already being busy, no tasks being available, or tasks being unsuitable for immediate assignment (e.g., reduce tasks when mappers are still active).
-- If a valid task is found all necessary details to execute that task are populated in `GetTaskReply` struct. For Map tasks, it implicitly provides the input file (via task.Filename). For Reduce tasks, it explicitly provides the locations of all relevant intermediate files and the total number of reducers (NR).
+- If a valid task is found all necessary details to execute that task are populated in `GetTaskReply` struct. For Map tasks, it implicitly provides the input file (via `task.Filename`). For Reduce tasks, it explicitly provides the locations of all relevant intermediate files and the total number of reducers (`nR`).
 
 
 3. **Handling Task Completion/Failure (`ReportTask` RPC Handler)**
@@ -541,10 +541,10 @@ for _, v := range c.intermediateFiles {
 ```
 When a map worker crashes after successfully writing its intermediate files, those files (on its local disk) are lost in a true distributed system. Our lab setup, where all workers share the host's filesystem, can sometimes mask this; a 'crashed' worker's files might still be accessible. This is a crucial difference from a production environment.
 Simply re-queuing all successfully completed map tasks from a crashed worker can be inefficient:
-- Performance Hit: It can lead to significant re-computation and potential test timeouts, especially if many map tasks were already done by a worker which crashed.
-- Complexity: Managing `pendingMappers` and preventing reduce tasks from starting prematurely adds complexity if many map tasks are suddenly re-added.
+- *Performance Hit:* It can lead to significant re-computation and potential test timeouts, especially if many map tasks were already done by a worker which crashed.
+- *Complexity:* Managing `pendingMappers` and preventing reduce tasks from starting prematurely adds complexity if many map tasks are suddenly re-added.
 
-*A More Targeted Optimization:*
+*A More Targeted Optimization (Future Scope):*
 A more refined approach is to only re-run a successful map task from a crashed worker if its specific output intermediate partitions are actually needed by currently pending (not yet completed) reduce tasks.
 
 This involves:
@@ -554,10 +554,11 @@ This involves:
 2. Determining if their output partitions are required by any active or future reduce tasks.
 
 3. Only then, re-queueing those specific map tasks and invalidating their previous intermediate file locations.
+4. Not to prevent all reduce task from processing and maintain list of reduce task which should be skipped if scheduled based on lost intermediate files state from a crashed worker.
 
 This smarter retry avoids redundant work but increases coordinator complexity. For our lab, focusing on retrying the currently running task of a failed worker proved sufficient to pass the tests, partly due to the shared filesystem behaviour making the storage of intermediate files also in some sense to global filesystem
 
-In essence, `checkWorkerStatus` implements the "timeout and retry" strategy. It ensures that work assigned to unresponsive workers is not indefinitely stalled and is eventually re-assigned, which is fundamental for making progress in a distributed system prone to failures.
+In essence, `checkWorkerStatus` implements the **"timeout and retry"** strategy. It ensures that work assigned to unresponsive workers is not indefinitely stalled and is eventually re-assigned, which is fundamental for making progress in a distributed system prone to failures.
 
 5. **Job Completion (Done)**
 	`main/mrcoordinator.go `periodically calls` Done()` to check if the entire job is finished.
