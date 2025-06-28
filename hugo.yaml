@@ -5,8 +5,8 @@ theme: PaperMod
 markup:
   highlight:
     noClasses: false
-    style: dracula  
-    lineNos: true  
+    style: dracula
+    lineNos: true
 params:
   ShowReadingTime: true
   ShowShareButtons: true
@@ -30,12 +30,13 @@ params:
       url: "https://x.com/harshrai3"
   contact:
     email: harshrai456@gmail.com
+rss:
+  filename: "feed.xml"
+  path: /
 
 outputs:
   home:
     - HTML
     - RSS
     - JSON # necessary for search
-
-
 
