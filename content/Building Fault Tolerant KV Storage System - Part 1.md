@@ -459,3 +459,4 @@ In subsequent parts, we will see how we set up a leader when a candidate wins el
 - https://pdos.csail.mit.edu/6.824/papers/raft-extended.pdf
 - Leader Election[ Visualization]( https://thesecretlivesofdata.com/raft/#election)
 - https://thesquareplanet.com/blog/students-guide-to-raft/
+- Implementation: https://github.com/harshrai654/6.5840/blob/master/src/raft1/raft.go
