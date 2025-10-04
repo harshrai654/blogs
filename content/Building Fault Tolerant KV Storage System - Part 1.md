@@ -61,8 +61,9 @@ The diagram below illustrates how a server's role changes under different circum
 ![Pasted image 20251002154539.png](/media/pasted-image-20251002154539.png)
 To grasp the role of elections and how `Term` serves as a time marker in RAFT, we must first understand 
 - How the threshold time is determined, after which a follower can become a candidate and start an election.
-- How each server of the cluster communicates with one another
-Imagine a cluster of three servers experiencing a network partition, where server 0, the current leader, cannot communicate with servers 1 and 2. If the servers have a fixed timeout value for elections, multiple servers might initiate elections simultaneously, resulting in no majority each time, with each server only receiving its own vote. Consequently, the cluster cannot decide on a leader for the next term. With each re-election, a server's term value (also known as `currentTerm`) increases by 1. So, when the previous server 0, from, say, term 1, rejoins the cluster after recovery, it will vote for either server 1 or 2, as both are requesting votes for their own `currentTerm` value, which will now be N if N elections have occurred after server 0 went down, with each server starting its own election and failing to become leader due to the lack of a majority. Even if server 0 votes for one server and a majority is achieved, the new leader needs to communicate with all peers, and if that doesn't happen quickly, we'll see another election. Overall, the cluster will be unstable and unable to progress due to election instability.
+- How each server of the cluster communicates with one another 
+
+Imagine a cluster of three servers experiencing a network partition, where server 0, the current leader, cannot communicate with servers 1 and 2. If the servers have a fixed timeout value for election, multiple servers might initiate elections simultaneously, resulting in no majority each time, with each server only receiving its own vote. Consequently, the cluster cannot decide on a leader for the next term. With each re-election, a server's term value (also known as `currentTerm`) increases by 1. So, when the previous server 0, from, say, term 1, rejoins the cluster after recovery, it will vote for either server 1 or 2, as both are requesting votes for their own `currentTerm` value, which will now be N if N elections have occurred after server 0 went down, with each server starting its own election and failing to become leader due to the lack of a majority. Even if server 0 votes for one server and a majority is achieved, the new leader needs to communicate with all peers, and if that doesn't happen quickly, we'll see another election. Overall, the cluster will be unstable and unable to progress due to election instability.
 
 To resolve this, we introduce a small element of randomness to each server's election timeout. This minimizes the chance of multiple servers starting elections simultaneously and maximizes the likelihood of a single server triggering a re-election and continuing as leader for subsequent terms.
 
@@ -70,18 +71,19 @@ To resolve this, we introduce a small element of randomness to each server's ele
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *tester.Persister, applyCh chan raftapi.ApplyMsg) raftapi.Raft {
 	...
+	// other state initialisation, we will see them later
 	...
 	
 	rf.electionTimeout = time.Duration(1500+(rand.Int63()%1500)) * time.Millisecond
 	go rf.ticker()
 	...
+	// other state initialisation, we will see them later
 	...
 	
 	}
 	
 func (rf *Raft) ticker() {
 	for !rf.killed() {
-		// Your code here (3A)
 		rf.mu.Lock()
 		if rf.state != StateLeader && time.Since(rf.lastContactFromLeader) >= rf.electionTimeout {
 			go rf.startElection()
@@ -134,8 +136,8 @@ type Raft struct {
 For the communication between servers, RAFT consensus algorithm uses RPC for
 - Requesting vote from other peers - `RequestVote` RPC
 - Propagate changes to log entries from leader to followers - `AppendEntries` RPC
-- Sending heartbeats from leader to follower - `AppendEntries` RPC with empty log data
-RPC, or Remote Procedure Call, is a programming paradigm that allows a program to execute a procedure (function, method) on a different machine as if it were a local procedure call.  Essentially, it's a way to build distributed systems where one program (the client) can request a service from another program (the server) over a network.
+- Sending heartbeats from leader to follower - `AppendEntries` RPC with empty log data 
+***RPC, or Remote Procedure Call***, is a programming paradigm that allows a program to execute a procedure (function, method) on a different machine as if it were a local procedure call.  Essentially, it's a way to build distributed systems where one program (the client) can request a service from another program (the server) over a network.
 Go provides `net/rpc` package which abstract most of the work related to serialization of RPC arguments and deserialization at receiving end and the underlying network call with provided data, to know more check Go's [`net/rpc` package](https://pkg.go.dev/net/rpc)
 
 RPC arguments and reply structs as also shown in the original paper [(page 4, fig 2)](https://pdos.csail.mit.edu/6.824/papers/raft-extended.pdf)
@@ -181,11 +183,11 @@ type InstallSnapshotArgs struct {
 ### Rules Of Election
 As we have already seen, an election timeout triggers an election by a given server, which is a `Follower`. This timeout occurs when the `Follower` does not receive any `AppendEntries` RPCs (even empty ones, containing no log) from the leader. When an election is initiated with `rf.startElection()`, the follower increments its `currentTerm` by 1 and issues `RequestVote` RPCs to each of its peers in parallel, awaiting their responses. At this point, three outcomes are possible:
 - The Follower gains a majority and becomes the leader. 
-  In this case, the Follower converts to the Leader state, and `setupLeader` sets up an `rf.replicate` go routine for each of the other peers. These go routines are responsible for sending heartbeats and logs using `AppendEntries` RPC calls.
-- While waiting for votes, a candidate may receive an `AppendEntries` RPC from another server claiming to be the leader. ***If the leader’s term (included in its RPC) is at least as large as the candidate’s current term, then the candidate recognizes the leader as legitimate and reverts to the follower state. If the term in the RPC is smaller than the candidate’s current term, the candidate rejects the RPC and remains in the candidate state.***
+  In this case, the Follower converts to the Leader state, and `setupLeader` method sets up  `rf.replicate` go routine for each of the other peers in a separate go routine. These go routines are responsible for sending heartbeats and logs using `AppendEntries` RPC calls, We use condition variable `replicatorCond` to signal these waiting go threads either when new log entry comes up or when heartbeat timeout occurs.
+- While waiting for votes, a candidate may receive an `AppendEntries` RPC from another server claiming to be the leader. ***If the leader’s term (included in its RPC) is at least as large as the candidate’s current term, then the candidate recognizes the leader as legitimate and of newer term hence reverts to the follower state. If the term in the RPC is smaller than the candidate’s current term, the candidate rejects the RPC and remains in the candidate state.***
 - A candidate neither wins nor loses the election. If many followers become candidates simultaneously, votes could be split, preventing any single candidate from obtaining a majority. When this happens, each candidate will time out and start a new election by incrementing its term and initiating another round of `RequestVote` RPCs. *The randomness in the election timeout helps prevent split votes from happening indefinitely.*
 
-According to the current rules, a server receiving a `RequestVote` RPC with a `Term` greater than its own should grant its vote. However, this could lead to an outdated server with an incomplete log becoming leader. Since the leader is responsible for log propagation and can overwrite follower logs, it's possible for such an outdated leader to erase already committed logs for which clients have received responses – an undesirable outcome.
+According to the current rules, a server receiving a `RequestVote` RPC with a `Term` greater than its own should grant its vote. However, this could lead to an outdated server with an incomplete log becoming leader. Since the leader is responsible for log propagation and can overwrite follower logs, it's possible for such an outdated leader to erase already committed logs for which clients have received responses - an undesirable outcome.
 Re-examining the `RequestVoteArgs` reveals that, in addition to `Term`, the struct includes `LastLogIndex` and `LastLogTerm`, representing the candidate's last log entry's index and term, respectively. These values help determine if the candidate's log contains at least the latest committed entries. The rules for verifying this when voting are straightforward:
 Raft determines the more up-to-date of two logs by comparing the index and term of their last entries. If the last entries have different terms, the log with the latter term is considered more up-to-date. If the logs share the same last term, the longer log is deemed more up-to-date.
 
@@ -194,7 +196,7 @@ consider a follower **A** that gets partitioned away from the rest of the cluste
 Meanwhile, the rest of the cluster still has a leader **B**. Because **B** can talk to a majority of servers, it continues to accept new log entries, replicate them, and safely commit them. Remember: in Raft, an entry is considered _committed_ only after it is stored on a majority of servers.
 Later, when connectivity is restored, server **A** now has a higher term than **B**. This causes **A** to reject `AppendEntries` from **B**, forcing **B** to step down. At this moment, no leader exists until a new election is held.
 Here’s where Raft’s rules keep the system safe:
-- **A cannot win leadership** because its log is missing committed entries that the majority already agreed on. Other servers will refuse to vote for it.
+- **A cannot win leadership election** because its log is missing committed entries that the majority already agreed on. Other servers will refuse to vote for it by comparing their latest log index and term with `RequestVote` RPC Arg's `LastLogIndex` and `LastLogTerm`.
 - A new leader must have logs that are at least as up-to-date as the majority. This ensures that committed entries are never lost.
 - Once a new leader is elected, it brings **A** back in sync by replicating the missing committed entries.
 This scenario highlights how Raft’s election rules preserve correctness: even if a partitioned follower returns with a higher term, it cannot override the majority’s progress. Leadership always ends up with a server that reflects all committed entries, and the cluster converges to the same state.
@@ -276,12 +278,14 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 Here are some things to keep in mind when implementing the `RequestVote` RPC:
 - Note the use of `snapshotLastLogIndex` and `snapshotLastLogTerm`, which relate to log compaction. Think of a snapshot as capturing the current state machine's image, allowing us to shorten logs up to that point, reducing overall log size. We'll explore how this works and its benefits later. For now, understand that a server, when verifying if a candidate has current logs, needs to read its own. If the log is truncated shortly after a snapshot, we store the snapshot's last details, like the index and term of the log at that index. Snapshotting generally shortens the log, but because indexes always increase, we use `snapshotLastLogIndex` as an offset to get the right index.
 - When a candidate gets a majority, it calls `setupLeader`, creating a context that can be cancelled, using Go's context package. This context returns a function, `leaderCancelFunc`, which, when called, cancels the context. We do this when a leader steps down, such as when it receives a `RequestVote` RPC from a candidate with a higher term. In this case, we cancel the leader's context. This is useful when the leader is performing async operations (like sending heartbeats or logs) and waiting for them. We then wait for the operation to complete or the context to be cancelled, signalling that we no longer need to wait because the current server is no longer the leader. We'll see what happens when a leader's context is cancelled later.
+- A potentially confusing aspect is that when we receive a `RequestVote` RPC response denying the vote and containing a **Term greater than our current one**, we examine the candidate's current state. This state might no longer be "candidate" because the `RequestVote` RPC could be delayed, and the node might have already gained a majority and become the leader. Despite any RPC delays, we strictly adhere to a core Raft principle: *upon receiving an RPC response with a Term greater than our current Term, we immediately update our Term to match the response. If we are the leader, we step down.* This rule is crucial because the **Term serves as a time indicator for the entire Raft cluster. Discovering that time has progressed requires us to adapt accordingly.**
+
 So to summarize:
 When a follower receives a `RequestVote`, it rejects the request if:
 1. The candidate’s term is smaller (`args.Term < rf.currentTerm`).
 2. It has already voted for another candidate in this term (`rf.votedFor != -1 && rf.votedFor != args.CandidateId`).
 3. The candidate’s log is less up-to-date than its own, according to Raft’s freshness rule:
-    - Candidate’s last log term must be greater, or equal with a log index at least as large.
+   Candidate’s last log term must be greater, or equal with a log index at least as large.
 
 
 We have already seen how `ticker` calls `startElection` method based on election timeout, Let's now understand with given below implementation of `startElection`, How a candidate asks for votes and what are the edge cases to consider while waiting for `RequestVote` RPC responses 
@@ -429,6 +433,7 @@ func (rf *Raft) startElection() {
 Within `startElection`, we construct `RequestVoteArgs` and concurrently dispatch the RPC to every peer using separate goroutines for each call. A `done` channel is also provided to these goroutines to signal events such as:
 - Election cancellation, occurring if the Candidate reverts to Follower status, potentially after sending initial `RequestVote` RPCs upon receiving a heartbeat OR a `RequestVote` RPC from another peer whose Term is at least the Candidate's current Term.
 - Cancellation of waiting for `RequestVote` RPC responses if a majority has been secured or the election timeout is reached.
+- It's worth noting that after sending RPC calls to each peer, *we release the lock*. This prevents us from blocking other incoming messages to that peer while awaiting RPC responses. This is why we use the `done` Go channel. It ensures that any concurrent request from elsewhere that modifies the candidate's status is notified. This happens when the `done` channel is closed, causing the `case <-done:` statement to return first in the `select` block.
 
 [6.5840 Labs](https://pdos.csail.mit.edu/6.824/labs/lab-raft1.html) provide us with following test cases for leader election:
 ```sh
@@ -445,8 +450,7 @@ ok      6.5840/raft1    31.352s
 
 ## Conclusion
 
-In this part we understood how RAFT manages a replicated log across a cluster of machines, ensuring consistency and availability. The post details the roles of leader, follower, and candidate, along with the key concepts of terms, log entries, leader election, and log replication. Crucial mechanisms, such as checks on `RequestVote` and `AppendEntries` RPCs and random timeouts, guarantee leader accuracy and prevent split votes. The post lays the groundwork for understanding how RAFT ensures that committed log entries are never lost and how a valid leader is reliably elected. Subsequent parts will dive deeper into log replication and heartbeats.
-Looking ahead, this blog series will continue to build upon this foundation. 
+In this part we understood how RAFT manages a replicated log across a cluster of machines, ensuring consistency and availability. The post details the roles of leader, follower, and candidate, along with the key concepts of terms, log entries, leader election, and log replication. Crucial mechanisms, such as checks on `RequestVote` and `AppendEntries` RPCs and random timeouts, guarantee leader accuracy and prevent split votes. The post lays the groundwork for understanding how RAFT ensures that committed log entries are never lost and how a valid leader is reliably elected. 
 
 In subsequent parts, we will see how we set up a leader when a candidate wins election and how we handle leader stepping down from leadership. Then we will see how log replication actually happens along with cases of log conflicts and log corrections by leader and how heartbeats helps to achieve that, In the end we will trace a client request to see the behaviour of this distributed cluster seen as a single machine from client's point of view.
 
