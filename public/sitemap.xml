@@ -2,8 +2,26 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>http://localhost:1313/blogs/tags/%23leader-election/</loc>
+    <lastmod>2025-10-04T16:16:17+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/%23replication/</loc>
+    <lastmod>2025-10-04T16:16:17+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-2/</loc>
+    <lastmod>2025-10-04T16:16:17+05:30</lastmod>
+  </url><url>
     <loc>http://localhost:1313/blogs/</loc>
-    <lastmod>2025-05-31T12:49:54+05:30</lastmod>
+    <lastmod>2025-10-04T16:16:17+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/raft/</loc>
+    <lastmod>2025-10-04T16:16:17+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/</loc>
+    <lastmod>2025-10-04T16:16:17+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-1/</loc>
+    <lastmod>2025-10-03T20:38:34+05:30</lastmod>
   </url><url>
     <loc>http://localhost:1313/blogs/map-reduce/</loc>
     <lastmod>2025-05-31T12:49:54+05:30</lastmod>
@@ -18,9 +36,6 @@
     <lastmod>2025-04-06T14:21:54+05:30</lastmod>
   </url><url>
     <loc>http://localhost:1313/blogs/tags/observability/</loc>
-    <lastmod>2025-04-06T14:21:54+05:30</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/blogs/tags/</loc>
     <lastmod>2025-04-06T14:21:54+05:30</lastmod>
   </url><url>
     <loc>http://localhost:1313/blogs/tags/filesystem/</loc>

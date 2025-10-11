@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>RAFT on Learning Loop</title>
+    <link>http://localhost:1313/blogs/tags/raft/</link>
+    <description>Recent content in RAFT on Learning Loop</description>
+    <generator>Hugo -- 0.145.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 04 Oct 2025 16:16:17 +0530</lastBuildDate>
+    <atom:link href="http://localhost:1313/blogs/tags/raft/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Building Fault Tolerant KV Storage System - Part 2</title>
+      <link>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-2/</link>
+      <pubDate>Sat, 04 Oct 2025 16:16:17 +0530</pubDate>
+      <guid>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-2/</guid>
+      <description>&lt;p&gt;%% Explain sequence:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Concept of commit Index, lastApplied Index in RAFT state&lt;/li&gt;
+&lt;li&gt;Explain setupLeader, lastContactFromLeader - how it helps in preventing election.&lt;/li&gt;
+&lt;li&gt;A egenral flow of request from client with Start continuing with&lt;/li&gt;
+&lt;li&gt;replicate method introduces in setpLeader and how CV helps in signalling for heartbeat or logs&lt;/li&gt;
+&lt;li&gt;How AppendEntries as a single RPC does the jobs of both heartbeat and log replication&lt;/li&gt;
+&lt;li&gt;How leader maintains next and match index and what does that mean&lt;/li&gt;
+&lt;li&gt;Explain everything about replicate and AppendEntries RPC&lt;/li&gt;
+&lt;li&gt;How Log correction happen &lt;code&gt;reconileLogs&lt;/code&gt;  and how we use optimisation there to reduce RPC trips&lt;/li&gt;
+&lt;li&gt;Explain how applier runs on different thtread why it runs on different thread and how CV help their %%&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;We &lt;a href=&#34;http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-1/&#34;&gt;previously discussed&lt;/a&gt; replicated state machines, leader election in the RAFT consensus algorithm, and log-based state maintenance. Now, we&amp;rsquo;ll focus on log replication across peer servers. We&amp;rsquo;ll also examine how RAFT ensures that the same commands are applied to the state machine at a given log index on every peer, because of the leader&amp;rsquo;s one-way log distribution to followers.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

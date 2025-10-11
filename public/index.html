@@ -58,10 +58,12 @@
         }
 
     </style>
-</noscript>
-    
-    <script data-goatcounter="https://ttharsh.goatcounter.com/count"
-            async src="//gc.zgo.at/count.js"></script>
+</noscript> 
+<script
+  data-goatcounter="https://ttharsh.goatcounter.com/count"
+  async
+  src="//gc.zgo.at/count.js"
+></script>
 
 
 </head>
@@ -140,6 +142,34 @@
 </div>
 
     </footer>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">Building Fault Tolerant KV Storage System - Part 2
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>%% Explain sequence:
+Concept of commit Index, lastApplied Index in RAFT state Explain setupLeader, lastContactFromLeader - how it helps in preventing election. A egenral flow of request from client with Start continuing with replicate method introduces in setpLeader and how CV helps in signalling for heartbeat or logs How AppendEntries as a single RPC does the jobs of both heartbeat and log replication How leader maintains next and match index and what does that mean Explain everything about replicate and AppendEntries RPC How Log correction happen reconileLogs and how we use optimisation there to reduce RPC trips Explain how applier runs on different thtread why it runs on different thread and how CV help their %% We previously discussed replicated state machines, leader election in the RAFT consensus algorithm, and log-based state maintenance. Now, we’ll focus on log replication across peer servers. We’ll also examine how RAFT ensures that the same commands are applied to the state machine at a given log index on every peer, because of the leader’s one-way log distribution to followers.
+...</p>
+  </div>
+  <footer class="entry-footer"><span title='2025-10-04 16:16:17 +0530 IST'>October 4, 2025</span>&nbsp;·&nbsp;10 min</footer>
+  <a class="entry-link" aria-label="post link to Building Fault Tolerant KV Storage System - Part 2" href="http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-2/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">Building Fault Tolerant KV Storage System - Part 1
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>This blog post is part of a series detailing my implementation of a fault-tolerant key-value server using the RAFT consensus protocol. Before diving into RAFT and its mechanics, it’s crucial to grasp the concept of a replicated state machine and its significance in building systems that are both fault-tolerant and highly available.
+Replicated State Machine A replicated state machine is essentially a collection of identical machines working together. One machine acts as the “master,” handling client requests and dictating the system’s operations. The other machines, the “replicas,” diligently copy the master’s state. This “state” encompasses all the data necessary for the system to function correctly, remembering the effects of previous operations. Think of a key-value store: the state would be the key-value pairs themselves, replicated across all machines to maintain consistency and resilience. Having the master’s state copied across multiple machines enables us to use these replicas in several ways. They can take over as the new master if the original fails, or handle read operations to reduce the load on the master. Because the state is copied across machines, network issues like latency, packet loss, and packet reordering significantly affect how closely a replica’s state matches the master’s. The difference between the master’s (most up-to-date) state and a replica’s state is known as replication lag. Generally, we aim to minimize this lag, and different systems offer varying levels of consistency (which we will discuss later when covering replication in RAFT).
+...</p>
+  </div>
+  <footer class="entry-footer"><span title='2025-10-03 20:38:34 +0530 IST'>October 3, 2025</span>&nbsp;·&nbsp;23 min</footer>
+  <a class="entry-link" aria-label="post link to Building Fault Tolerant KV Storage System - Part 1" href="http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-1/"></a>
 </article>
 
 <article class="post-entry"> 
@@ -253,33 +283,12 @@ A TLB hit means for given virtual address the physical frame number was found in
   <footer class="entry-footer"><span title='2024-11-20 22:26:06 +0530 IST'>November 20, 2024</span>&nbsp;·&nbsp;2 min</footer>
   <a class="entry-link" aria-label="post link to TLB" href="http://localhost:1313/blogs/tlb/"></a>
 </article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2 class="entry-hint-parent">Page Tables
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>Page Tables Page table contains the translation information of virtual page number to physical frame number. For an address space of 32 bits and page size of 4 KB (i.e. memory of 2^32 is divided into segments of 4 KB where each segment is called a memory page) , The virtual address will be of size 32 bits of which 12 bits (2^12 = 4 KB) will be used as offset inside a single page whereas remaining 20 bits will be used as virtual page number
-...</p>
-  </div>
-  <footer class="entry-footer"><span title='2024-11-17 20:22:15 +0530 IST'>November 17, 2024</span>&nbsp;·&nbsp;1 min</footer>
-  <a class="entry-link" aria-label="post link to Page Tables" href="http://localhost:1313/blogs/page-tables/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2 class="entry-hint-parent">B-Tree Latch Optimisation
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>References 5.6 Problem Generally when traversing the index made up of btree we have to take latch on it. In MySQL 5.6 the approach of taking latch depends on the possible operation we are doing:
-If the operation is a read operation then taking a read lock is sufficient to prevent any writes to happen to the pages we are accessing in Btree while reading If the operation is a write operation then there are again two possibilities: Optimistic Locking If the write is limited to modifying the leaf page only without modifying the structure of the tree (Merging OR Splitting) then it’s an optimistic locking approach where we take read latch on root of the tree and write latch only on the leaf node to modify ^ab3c53 Pessimistic Locking But if the operation result is in any type of restructuring of the tree itself then that will be known to us only after reaching the target leaf node and knowing its neighbours and parents. So the approach is first to try with optimistic locking defined above and then go for pessimistic locking Pessimistic locking involves taking a write latch on the root resulting in full ownership of the tree by the current operation (until the operation is complete no other operation can take a read or write latch, so all the other operations has to wait even if they are read operations and involve only optimistic locking). When the leaf node is found we take write latch on the leaf’s neighbours as well as its parent and do the restructuring and if the same restructuring needs to happen at parent level then we will take similar write locks recursively up the tree. ^17a3ff
-...</p>
-  </div>
-  <footer class="entry-footer"><span title='2024-11-17 12:08:00 +0530 IST'>November 17, 2024</span>&nbsp;·&nbsp;4 min</footer>
-  <a class="entry-link" aria-label="post link to B-Tree Latch Optimisation" href="http://localhost:1313/blogs/b-tree-latch-optimisation/"></a>
-</article>
+<footer class="page-footer">
+  <nav class="pagination">
+    <a class="next" href="http://localhost:1313/blogs/page/2/">Next&nbsp;&nbsp;»
+    </a>
+  </nav>
+</footer>
     </main>
     
 <footer class="footer">

@@ -7,6 +7,7 @@ markup:
     noClasses: false
     style: dracula
     lineNos: true
+    lineNumbersInTable: false
 params:
   ShowReadingTime: true
   ShowShareButtons: true
