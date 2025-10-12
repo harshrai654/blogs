@@ -2,104 +2,104 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:1313/blogs/</loc>
+    <loc>http://localhost:63714/blogs/</loc>
     <lastmod>2025-10-12T00:48:38+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/memory/</loc>
+    <loc>http://localhost:63714/blogs/tags/memory/</loc>
     <lastmod>2025-10-12T00:48:38+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/multipart-form-uploads---busboy-and-node-streams/</loc>
+    <loc>http://localhost:63714/blogs/multipart-form-uploads---busboy-and-node-streams/</loc>
     <lastmod>2025-10-12T00:48:38+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/networking/</loc>
+    <loc>http://localhost:63714/blogs/tags/networking/</loc>
     <lastmod>2025-10-12T00:48:38+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/nodejs/</loc>
+    <loc>http://localhost:63714/blogs/tags/nodejs/</loc>
     <lastmod>2025-10-12T00:48:38+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/os/</loc>
+    <loc>http://localhost:63714/blogs/tags/os/</loc>
     <lastmod>2025-10-12T00:48:38+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/</loc>
+    <loc>http://localhost:63714/blogs/tags/</loc>
     <lastmod>2025-10-12T00:48:38+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/tcp/</loc>
+    <loc>http://localhost:63714/blogs/tags/tcp/</loc>
     <lastmod>2025-10-12T00:48:38+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/%23leader-election/</loc>
+    <loc>http://localhost:63714/blogs/tags/%23leader-election/</loc>
     <lastmod>2025-10-04T16:16:17+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/%23replication/</loc>
+    <loc>http://localhost:63714/blogs/tags/%23replication/</loc>
     <lastmod>2025-10-04T16:16:17+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-2/</loc>
+    <loc>http://localhost:63714/blogs/building-fault-tolerant-kv-storage-system---part-2/</loc>
     <lastmod>2025-10-04T16:16:17+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/raft/</loc>
+    <loc>http://localhost:63714/blogs/tags/raft/</loc>
     <lastmod>2025-10-04T16:16:17+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-1/</loc>
+    <loc>http://localhost:63714/blogs/building-fault-tolerant-kv-storage-system---part-1/</loc>
     <lastmod>2025-10-03T20:38:34+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/map-reduce/</loc>
+    <loc>http://localhost:63714/blogs/map-reduce/</loc>
     <lastmod>2025-05-31T12:49:54+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/database/</loc>
+    <loc>http://localhost:63714/blogs/tags/database/</loc>
     <lastmod>2025-04-06T14:21:54+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/debugging-redis-latency/</loc>
+    <loc>http://localhost:63714/blogs/debugging-redis-latency/</loc>
     <lastmod>2025-04-06T14:21:54+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/observability/</loc>
+    <loc>http://localhost:63714/blogs/tags/observability/</loc>
     <lastmod>2025-04-06T14:21:54+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/filesystem/</loc>
+    <loc>http://localhost:63714/blogs/tags/filesystem/</loc>
     <lastmod>2025-03-02T16:15:01+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections/</loc>
+    <loc>http://localhost:63714/blogs/socket-file-descriptor-and-tcp-connections/</loc>
     <lastmod>2025-03-02T16:15:01+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/disk/</loc>
+    <loc>http://localhost:63714/blogs/tags/disk/</loc>
     <lastmod>2025-03-01T20:41:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/indexes/</loc>
+    <loc>http://localhost:63714/blogs/tags/indexes/</loc>
     <lastmod>2025-03-01T20:41:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/file-system-implementation/</loc>
+    <loc>http://localhost:63714/blogs/file-system-implementation/</loc>
     <lastmod>2025-03-01T20:41:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/files-and-directories/</loc>
+    <loc>http://localhost:63714/blogs/files-and-directories/</loc>
     <lastmod>2025-02-23T20:41:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/raid-redundant-array-of-inexpensive-disk/</loc>
+    <loc>http://localhost:63714/blogs/raid-redundant-array-of-inexpensive-disk/</loc>
     <lastmod>2025-02-13T20:25:14+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/cache/</loc>
+    <loc>http://localhost:63714/blogs/tags/cache/</loc>
     <lastmod>2024-11-26T20:29:34+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/multilevel-page-table/</loc>
+    <loc>http://localhost:63714/blogs/multilevel-page-table/</loc>
     <lastmod>2024-11-26T20:29:34+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/pagetable/</loc>
+    <loc>http://localhost:63714/blogs/tags/pagetable/</loc>
     <lastmod>2024-11-26T20:29:34+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/virtualisation/</loc>
+    <loc>http://localhost:63714/blogs/tags/virtualisation/</loc>
     <lastmod>2024-11-26T20:29:34+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tlb/</loc>
+    <loc>http://localhost:63714/blogs/tlb/</loc>
     <lastmod>2024-11-20T22:26:06+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/page-tables/</loc>
+    <loc>http://localhost:63714/blogs/page-tables/</loc>
     <lastmod>2024-11-17T20:22:15+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/b-tree-latch-optimisation/</loc>
+    <loc>http://localhost:63714/blogs/b-tree-latch-optimisation/</loc>
     <lastmod>2024-11-17T12:08:00+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/mutex/</loc>
+    <loc>http://localhost:63714/blogs/tags/mutex/</loc>
     <lastmod>2024-11-17T12:08:00+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/categories/</loc>
+    <loc>http://localhost:63714/blogs/categories/</loc>
   </url><url>
-    <loc>http://localhost:1313/blogs/search/</loc>
+    <loc>http://localhost:63714/blogs/search/</loc>
   </url>
 </urlset>
