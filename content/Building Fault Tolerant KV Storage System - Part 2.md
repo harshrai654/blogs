@@ -1,6 +1,6 @@
 ---
 title: Building Fault Tolerant KV Storage System - Part 2
-draft: true
+draft: false
 tags:
   - "#Replication"
   - "#Leader-Election"
