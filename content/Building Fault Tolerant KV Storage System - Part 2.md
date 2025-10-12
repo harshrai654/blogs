@@ -642,6 +642,42 @@ sequenceDiagram
 ### Why leader commits log entry when its of `currentTerm` only?
 You may have noticed in the `replicate` method that when counting majority replication we start form the lastest log index at the leader and if that log's term is equal to leader's current term then only we check the replication factor for that log and update commit index and applier thread in case of majority, But why is this the case?
 
+![Pasted image 20251012235526.png](/media/pasted-image-20251012235526.png)
+Above image is form the original RAFT paper and it explain the scenario pretty well
+> A time sequence showing why a leader cannot determine commitment using log entries from older terms. In (a) S1 is leader and partially replicates the log entry at index 2. In (b) S1 crashes; S5 is elected leader for term 3 with votes from S3, S4, and itself, and accepts a different entry at log index 2. In (c) S5 crashes; S1 restarts, is elected leader, and continues replication. At this point, the log entry from term 2 has been replicated on a majority of the servers, but it is not committed. If S1 crashes as in (d), S5 could be elected leader (with votes from S2, S3, and S4) and overwrite the entry with its own entry from term 3. However, if S1 replicates an entry from its current term on a majority of the servers before crashing, as in (e), then this entry is committed (S5 cannot win an election). At this point all preceding entries in the log are committed as well.
+
+at point (c) S1 is the leader again and it had log entry from term 2 which it was able to replicate to majority (S1, S2 & S3) but the current term at this point should be atleast 4 since there was already an election for term 3 with leader S5 and at point (c) S1 also appended one log for term 4. Now if at point (d) S1 crashes again **S5 can again be elected for term 5 because S2, S3 and S4 will grant vote to S5 because form their point of view S5 has atleast uptodate log with lates log index <= theri own log and term value of 3 whihc is greater than 2.**
+Because of this we cannot allow a log of older terms to be committed because a peer with log of term greater then the term of log replicated to majority can become a leader and as part of log correction erase this older term logs so we cannot commit such logs.
+
+## Conclusion
+In this second part, we successfully implemented **Raft's Log Replication** to build a fault-tolerant in-memory system. 
+We explored the core mechanics: the leader’s use of the **AppendEntries RPC** for both sending log entries and serving as a **heartbeat**, the vital **log consistency checks** using `PrevLogIndex`/`PrevLogTerm`, and the **log reconciliation** process used by followers to fix conflicts. Finally, we detailed how entries achieve a **committed** state—only after successful replication to a **majority** of peers, and are then applied to the state machine by a dedicated applier goroutine.
+
+[6.5840 Labs](https://pdos.csail.mit.edu/6.824/labs/lab-raft1.html) provide us with following test cases for log replication:
+```sh
+Test (3B): basic agreement (reliable network)...
+  ... Passed --  time  2.1s #peers 3 #RPCs    14 #Ops    0
+Test (3B): RPC byte count (reliable network)...
+  ... Passed --  time  3.3s #peers 3 #RPCs    46 #Ops    0
+Test (3B): test progressive failure of followers (reliable network)...
+  ... Passed --  time  6.4s #peers 3 #RPCs    41 #Ops    0
+Test (3B): test failure of leaders (reliable network)...
+  ... Passed --  time  8.6s #peers 3 #RPCs    68 #Ops    0
+Test (3B): agreement after follower reconnects (reliable network)...
+  ... Passed --  time  5.4s #peers 3 #RPCs    50 #Ops    0
+Test (3B): no agreement if too many followers disconnect (reliable network)...
+  ... Passed --  time  5.2s #peers 5 #RPCs    75 #Ops    0
+Test (3B): concurrent Start()s (reliable network)...
+  ... Passed --  time  2.7s #peers 3 #RPCs    14 #Ops    0
+Test (3B): rejoin of partitioned leader (reliable network)...
+  ... Passed --  time  9.1s #peers 3 #RPCs    81 #Ops    0
+Test (3B): leader backs up quickly over incorrect follower logs (reliable network)...
+  ... Passed --  time 23.8s #peers 5 #RPCs   775 #Ops    0
+Test (3B): RPC counts aren't too high (reliable network)...
+  ... Passed --  time  4.1s #peers 3 #RPCs    30 #Ops    0
+```
+
+In the next part we will see some nuances of log compaction with snapshots and how persistence work currently in lab environment.
 
 
 # References
