@@ -18,23 +18,23 @@ Therefore, I checked the `multer` documentation and discovered the `limits` conf
 ```md
 - **limits** - _object_ - Various limits on incoming data. Valid properties are:
     
-    - **fieldNameSize** - _integer_ - Max field name size (in bytes). **Default:** `100`.
-        
-    - **fieldSize** - _integer_ - Max field value size (in bytes). **Default:** `1048576` (1MB).
-        
-    - **fields** - _integer_ - Max number of non-file fields. **Default:** `Infinity`.
-        
-    - **fileSize** - _integer_ - For multipart forms, the max file size (in bytes). **Default:** `Infinity`.
-        
-    - **files** - _integer_ - For multipart forms, the max number of file fields. **Default:** `Infinity`.
-        
-    - **parts** - _integer_ - For multipart forms, the max number of parts (fields + files). **Default:** `Infinity`.
-        
-    - **headerPairs** - _integer_ - For multipart forms, the max number of header key-value pairs to parse. **Default:** `2000` (same as node's http module).
+- **fieldNameSize** - _integer_ - Max field name size (in bytes). **Default:** `100`.
+	
+- **fieldSize** - _integer_ - Max field value size (in bytes). **Default:** `1048576` (1MB).
+	
+- **fields** - _integer_ - Max number of non-file fields. **Default:** `Infinity`.
+	
+- **fileSize** - _integer_ - For multipart forms, the max file size (in bytes). **Default:** `Infinity`.
+	
+- **files** - _integer_ - For multipart forms, the max number of file fields. **Default:** `Infinity`.
+	
+- **parts** - _integer_ - For multipart forms, the max number of parts (fields + files). **Default:** `Infinity`.
+	
+- **headerPairs** - _integer_ - For multipart forms, the max number of header key-value pairs to parse. **Default:** `2000` (same as node's http module).
 
 ```
 
-So, based on the available options, I can have a per-file-based size limit along with a limit on the number of files.  However, that wasn't quite what I needed, since the requirement wasn't just to cap the *number* of files, but to limit the overall request upload size.  Eventually, I stumbled upon [this feature request](https://github.com/mscdex/busboy/issues/367) in the `busboy` repository, which addressed exactly what I wanted.  This discovery kicked off a fascinating exploration of how `busboy` handles multipart form data.  It led to uncovering many details regarding **back pressure** in streams, how **TCP control flow windows** help in maintaining back pressure, and all this in an effort to contribute a request-wide total size limit configuration option. 
+So, based on the available options, I can have a per-file-based size limit along with a limit on the number of files.  However, that wasn't quite what I needed, since the requirement wasn't just to cap the *number* of files, but to limit the overall request upload size.  Eventually, I stumbled upon [this feature request](https://github.com/mscdex/busboy/issues/367) in the `busboy` repository, which addressed exactly what I wanted.  This discovery kicked off a intresting exploration of how `busboy` handles multipart form data.  It led to uncovering many details regarding **back pressure** in streams, how **TCP control flow windows** help in maintaining back pressure, and all this in an effort to contribute a request-wide total size limit configuration option to `busboy`. 
 
 ## Streams in NodeJS
 
@@ -77,7 +77,8 @@ http.createServer((req, res) => {
 });
 ```
 
-From above example we can see that the `req` object which is of type `ReadableStream` and we are piping this stream to `busboy` instance `bb` which returns an instance of [MultiPart](https://github.com/mscdex/busboy/blob/master/lib/types/multipart.js#L221) class - a subclass of `Writable`.
+Looking at the code, the `req` object (a `Readable` stream) is piped into the `busboy` instance (`bb`). This `bb` instance returns a `MultiPart` class object (specifically, an instance of the class found [here](https://github.com/mscdex/busboy/blob/master/lib/types/multipart.js#L221)), which inherits from `Writable`.
+
 The `Readable` and `Writable` streams have several methods that are invoked at different times during operations such as `read`, `write`, and `pause`. Because each stream relies on the consumer downstream and the producer upstream, Node.js buffers the generated data by default if there's backpressure in the stream pipeline. You can find more information about this in the Node.js [documentation](https://nodejs.org/api/stream.html#buffering): 
 > Both [`Writable`](https://nodejs.org/api/stream.html#class-streamwritable) and [`Readable`](https://nodejs.org/api/stream.html#class-streamreadable) streams will store data in an internal buffer.
 The amount of data potentially buffered depends on the `highWaterMark` option passed into the stream's constructor. For normal streams, the `highWaterMark` option specifies a [total number of bytes](https://nodejs.org/api/stream.html#highwatermark-discrepancy-after-calling-readablesetencoding). 
@@ -134,12 +135,16 @@ So Node.js stream buffering ensures that:
 └────────────────────┘
 ```
 
-As you can see above, if `Disk I/O` is slower than the rate at which we are receiving chunks from the TCP socket, the `ws.write` call will continue buffering incoming chunks into its internal memory buffer until it reaches its `highWaterMark` (64KB in this case). Once the buffer is full, `ws.write` returns `false`, signaling the stream above it that the downstream consumer is slower.
+As you can see above, if `Disk I/O` is slower than the rate at which we are receiving chunks from the TCP socket, the `ws.write` call will continue buffering incoming chunks into its internal memory buffer until it reaches its `highWaterMark` (64KB in this case). Once the buffer is full, `ws.write` returns `false`, signalling the stream above it that the downstream consumer is slower.
 The `IncomingMessage` (`req`), being a readable stream, will then start buffering the chunks coming from the TCP socket in its own internal buffer (16KB `highWaterMark`). When this buffer fills up, `req.push` will also return `false`, indicating it cannot accept more data for now. This backpressure propagates upstream and eventually affects the TCP socket itself, which the OS handles via **TCP flow control** - essentially slowing down the sender to prevent memory overload.
 
 At the OS level, each TCP socket has its own kernel buffer. Normally, data flows like this: 
 ```
-kernel buffer → user-space buffer → writable stream buffer → filesystem buffer → disk. 
+TCP socket kernel buffer → 
+user-space buffer → 
+writable stream buffer → 
+filesystem buffer → 
+disk
 ```
 Each step involves memory copies. In some cases, if we don’t need to parse or modify the data (like streaming raw uploads to disk), we can bypass user-space entirely using zero-copy techniques, transferring data directly from the socket kernel buffer to the filesystem kernel buffer. This avoids redundant memory copies and improves performance, at the cost of not being able to inspect or modify the data before it’s written.
 For a deeper dive into TCP connections, sockets, and file descriptors, you can check out my detailed write-up [here]({{< relref "Socket File Descriptor and TCP connections.md" >}}).
@@ -206,7 +211,7 @@ this._bparser = new StreamSearch(`\r\n--${boundary}`, ssCb);
 `StreamSearch` calls the given callback `ssCb` whenever it encounters non-matching data or finds a match for the needle.  
 In other words, as the raw `multipart/form-data` byte stream flows through, `StreamSearch` helps separate the actual boundaries from the data chunks in between, and passes those chunks to the provided callback for processing.
 The callback `ssCb` is the core of the multipart parsing logic. During initialization, Busboy sets up several internal tracking variables, such as:
-- **`fileSize`** -  Tracks the size of the current file in bytes across all incoming chunks. Once this reaches the configured `limits.fileSize`, Busboy stops processing additional chunks for that specific file and skips them until it encounters the next boundary (i.e., the start of a new field).
+- **`fileSize`** -  Tracks the size of the current file in bytes across all incoming chunks for that file. Once this reaches the configured `limits.fileSize`, Busboy stops processing additional chunks for that specific file and skips them until it encounters the next boundary (i.e., the start of a new field).
 - **`files`** - Keeps track of the number of files seen so far. Once this count reaches `limits.files`, Busboy skips all subsequent file data until it detects the end of the form-data.
 There are other similar limits and tracking variables initialized internally, but these two are the most relevant to the new feature we want to add:
 
@@ -287,20 +292,20 @@ if (!skipPart) {
 }
 ```
 
-The important part here is that the **`limit` event** is fired only on the individual `FileStream` instance, not on the Busboy instance. This means the event listener attached to that particular file stream (usually through the `'file'` event handler on Busboy) can detect that the stream has been truncated because its size exceeded the per-file limit.
+The important part here is that the **`limit` event** is fired only on the individual `FileStream` instance, not on the `Busboy` instance. This means the event listener attached to that particular file stream (usually through the `'file'` event handler on `Busboy`) can detect that the stream has been truncated because its size exceeded the per-file limit.
 
->With our new **`totalFileSize`** feature, however, we’ll extend this behavior,  The `limit` event will be fired on **both** the `FileStream` and the **Busboy instance**. This is because exceeding the `totalFileSize` means the current file is truncated **and** no further file data across the entire request should be processed. The event now serves as a global signal to stop all further reads. 
+>With our new **`totalFileSize`** feature, however, we’ll extend this behavior,  A new event:  `totalSizelimit` event will be fired on **both** the `FileStream` and the **Busboy instance**. This is because exceeding the `totalFileSize` means the current file is truncated **and** no further file data across the entire request should be processed. The event now serves as a global signal to stop consumption of further reads as there won't be any more data parsed and pushed to the stream by `busboy` because of limits. 
 
 ### `Busboy's` Back pressure Handling
-If you look closely at the snippet above, you’ll notice something interesting about how Busboy handles **backpressure**.
-When `this._fileStream.push(chunk)` returns **`false`**, it means that **the internal buffer of the `Readable` stream (`_fileStream`) itself is full**, and therefore it’s temporarily unable to accept more data from its upstream producer, In this case, `Busboy’s` `Multipart` writable stream.
+If you look closely at the snippet above, you’ll also notice something interesting about how `Busboy` handles **backpressure**.
+When `this._fileStream.push(chunk)` returns **`false`**, it means that **the internal buffer of the `Readable` stream (`_fileStream`) itself is full**, and therefore it’s temporarily unable to accept more data from its upstream producer: In this case, `Busboy’s` `Multipart` writable stream.
 Here’s the nuance:
 - The `FileStream` class in `Busboy` is a **custom `Readable` stream** that emits the parsed file data.
 - `Busboy` (the `Multipart` writable) acts as the **producer** of that readable stream’s data.
 - When `Busboy` calls `fileStream.push(chunk)`:
     - If it returns `true`, it means the file stream’s internal buffer still has room it’s safe to push more data.
-    - If it returns `false`, the file stream’s internal `highWaterMark` is reached  meaning it’s now buffering as much data as it can before its _consumer_ (e.g., `fs.createWriteStream`) reads more.
-That “slow consumer” can be anything on the other end of the pipe:
+    - If it returns `false`, the file stream’s internal `highWaterMark` is reached  meaning it’s now buffering as much data as it can before its _slow consumer_ (e.g., `fs.createWriteStream`) reads more.
+That **“slow consumer”** can be anything on the other end of the pipe:
 - a file write stream (disk I/O delay),
 - a transform stream (CPU-bound operation),
 - or even network latency if you’re piping it to another request.
@@ -319,12 +324,12 @@ _write(chunk, enc, cb) {
 ```
 
 This `_write()` method belongs to the `Multipart` class, which extends Node’s `Writable` stream.  
-It’s invoked automatically when the incoming request’s readable stream (for example, `req`) is piped into the Busboy instance like this:
+It’s invoked automatically when the incoming `request’s` readable stream (for example, `req`) is piped into the `Busboy` instance like this:
 ```js
 req.pipe(bb);
 ```
 
-Here, the `cb` parameter represents Node’s **backpressure callback**.  
+Here, the `cb` parameter in `_write` method represents Node’s **backpressure callback**.  
 Calling this callback tells Node.js, 
 > “I’m done processing this chunk, You can send me the next one.”
 
@@ -333,7 +338,7 @@ By saving `cb` into `this._writecb`, Busboy is essentially saying:
 > “Hold on, I’ll call this callback later, once I’m sure it’s safe to receive more data after parsing current chunk.”
 
 Now, when the file stream slows down (because its internal buffer is full), Busboy **hands off** this `_writecb` to the file stream by assigning it to `_readcb`.  
-This is a crucial step: *it ties the writable side (Busboy) and the readable side (`FileStream`) together through deferred signaling.*
+This is a crucial step: *it ties the writable side (Busboy) and the readable side (`FileStream`) together through deferred signalling.*
 Later, when the consumer, Say, an `fs.WriteStream` writing to disk finishes processing some data and is ready for more, it triggers the `FileStream`’s `_read()` method:
 ```js
 _read(n) {
@@ -346,15 +351,49 @@ _read(n) {
 ```
 
 This is where the “**magic**” happens.  
-That previously saved callback (`cb`), which originally came from the writable side (`Busboy`), is now invoked by the readable side (`FileStream`).  
+That previously saved callback (`cb`), which originally came from the *writable* side (`Busboy`), is now invoked by the readable side (`FileStream`).  
 **This signals back upstream that the consumer has caught up and Busboy can safely resume parsing and pushing more data.**
 
+```mermaid
+sequenceDiagram
+    participant Net as Network Socket (req)
+    participant Busboy as Busboy Multipart (Writable)
+    participant FS as FileStream (Readable)
+    participant Disk as fs.WriteStream (Writable)
+
+    Note over Net,Busboy: Normal data flow →
+    Net->>Busboy: chunk
+    Busboy->>FS: fileStream.push(chunk)
+    FS->>Disk: pipe(chunk)
+
+    alt Buffer has space (push() returns true)
+        Note over Busboy: ✅ FileStream buffer has room
+        Busboy->>Busboy: call this._writecb()<br/>(request next chunk)
+    else Buffer full (push() returns false)
+        Note over FS: ⚠️ FileStream buffer full
+        Busboy->>FS: FS._readcb = this._writecb<br/>this._writecb = null
+        Note right of FS: Wait until downstream frees buffer
+    end
+
+    Note over Disk: Disk slowly writes data...
+    Disk-->>FS: _read() called<br/>(ready for more)
+    FS->>Busboy: call _readcb()<br/>(resumes parsing)
+    Busboy->>FS: push(next chunk)
+    FS->>Disk: pipe(chunk)
+
+```
+
 In essence, this **handoff of callbacks between `_writecb` and `_readcb`** is Busboy’s internal mechanism for **propagating backpressure**.  
-It ensures that data flows smoothly from the `req` (the network socket and `IncomingMessage` readable) -> into Busboy’s `Multipart` writable -> through the `FileStream` readable -> and finally into the consumer writable (like the filesystem),  All without overwhelming any part of the chain.
+It ensures that data flows smoothly from 
+The `req` (the network socket and `IncomingMessage` readable) → 
+into Busboy’s `Multipart` writable →
+Through the `FileStream` readable →
+And finally into the consumer `writable` (like the `filesystem`)
+All without overwhelming any part of the chain.
 
 ## Wrapping Up
 
 This exploration of how Busboy parses multipart form data, manages `backpressure`, and coordinates between readable and writable streams gave me a much deeper understanding of Node.js stream internals.
 
-As part of this deep dive, I also proposed a small improvement to `Busboy` — **adding support for a `totalFileSize` limit** that stops processing once the total upload size crosses a configured threshold. You can check out the implementation here:  
+As part of this deep dive, As I mentioned, I also proposed a small improvement to `Busboy` — **adding support for a `totalFileSize` limit** that stops processing once the total upload size crosses a configured threshold. You can check out the implementation for more details about the change here:  
 🔗 **[GitHub PR #374 – Add total file size limit support in Busboy](https://github.com/mscdex/busboy/pull/374/files)**
