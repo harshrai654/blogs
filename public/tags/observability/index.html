@@ -1,25 +1,25 @@
 <!DOCTYPE html>
 <html lang="en" dir="auto">
 
-<head><script src="/blogs/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=blogs/livereload" data-no-instant defer></script><meta charset="utf-8">
+<head><meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="robots" content="noindex, nofollow">
+<meta name="robots" content="index, follow">
 <title>Observability | Learning Loop</title>
 <meta name="keywords" content="">
 <meta name="description" content="">
 <meta name="author" content="">
-<link rel="canonical" href="http://localhost:1313/blogs/tags/observability/">
+<link rel="canonical" href="https://harshrai654.github.io/blogs/tags/observability/">
 <link crossorigin="anonymous" href="/blogs/assets/css/stylesheet.3100c559f5e5f9a03f24d0f501a11025c11322dfc9520791d926b4086ca75994.css" integrity="sha256-MQDFWfXl&#43;aA/JND1AaEQJcETIt/JUgeR2Sa0CGynWZQ=" rel="preload stylesheet" as="style">
-<link rel="icon" href="http://localhost:1313/blogs/favicon.ico">
-<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/blogs/favicon-16x16.png">
-<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/blogs/favicon-32x32.png">
-<link rel="apple-touch-icon" href="http://localhost:1313/blogs/apple-touch-icon.png">
-<link rel="mask-icon" href="http://localhost:1313/blogs/safari-pinned-tab.svg">
+<link rel="icon" href="https://harshrai654.github.io/blogs/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://harshrai654.github.io/blogs/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://harshrai654.github.io/blogs/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://harshrai654.github.io/blogs/apple-touch-icon.png">
+<link rel="mask-icon" href="https://harshrai654.github.io/blogs/safari-pinned-tab.svg">
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
-<link rel="alternate" type="application/rss+xml" href="http://localhost:1313/blogs/tags/observability/index.xml">
-<link rel="alternate" hreflang="en" href="http://localhost:1313/blogs/tags/observability/">
+<link rel="alternate" type="application/rss+xml" href="https://harshrai654.github.io/blogs/tags/observability/index.xml">
+<link rel="alternate" hreflang="en" href="https://harshrai654.github.io/blogs/tags/observability/">
 <noscript>
     <style>
         #theme-toggle,
@@ -81,7 +81,7 @@
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="http://localhost:1313/blogs/" accesskey="h" title="Learning Loop (Alt + H)">Learning Loop</a>
+            <a href="https://harshrai654.github.io/blogs/" accesskey="h" title="Learning Loop (Alt + H)">Learning Loop</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -110,7 +110,7 @@
     </nav>
 </header>
 <main class="main"> 
-<header class="page-header"><div class="breadcrumbs"><a href="http://localhost:1313/blogs/">Home</a>&nbsp;»&nbsp;<a href="http://localhost:1313/blogs/tags/">Tags</a></div>
+<header class="page-header"><div class="breadcrumbs"><a href="https://harshrai654.github.io/blogs/">Home</a>&nbsp;»&nbsp;<a href="https://harshrai654.github.io/blogs/tags/">Tags</a></div>
   <h1>
     Observability
   </h1>
@@ -127,12 +127,12 @@ Background After introducing metrics to our Node.js service, we started recordin
 ...</p>
   </div>
   <footer class="entry-footer"><span title='2025-04-06 14:21:54 +0530 IST'>April 6, 2025</span>&nbsp;·&nbsp;11 min</footer>
-  <a class="entry-link" aria-label="post link to Debugging Redis Latency" href="http://localhost:1313/blogs/debugging-redis-latency/"></a>
+  <a class="entry-link" aria-label="post link to Debugging Redis Latency" href="https://harshrai654.github.io/blogs/debugging-redis-latency/"></a>
 </article>
     </main>
     
 <footer class="footer">
-        <span>&copy; 2025 <a href="http://localhost:1313/blogs/">Learning Loop</a></span> · 
+        <span>&copy; 2025 <a href="https://harshrai654.github.io/blogs/">Learning Loop</a></span> · 
 
     <span>
         Powered by
@@ -144,7 +144,89 @@ Background After introducing metrics to our Node.js service, we started recordin
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
         <path d="M12 6H0l6-6z" />
     </svg>
-</a>
+</a><script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";
+
+  
+  function isDarkMode() {
+    return (
+      document.body.classList.contains("dark") ||
+      localStorage.getItem("pref-theme") === "dark" ||
+      (!localStorage.getItem("pref-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    );
+  }
+
+  
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDarkMode() ? "dark" : "default",
+    themeVariables: {
+      dark: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#ffffff",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#ffffff",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+        background: "#1a1a1a",
+        mainBkg: "#2d2d2d",
+        secondBkg: "#3d3d3d",
+        tertiaryBkg: "#4d4d4d",
+      },
+      default: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#000000",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#000000",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+      },
+    },
+  });
+
+  
+  const themeToggle = document.getElementById("theme-toggle");
+  if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+      setTimeout(() => {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: isDarkMode() ? "dark" : "default",
+          themeVariables: {
+            dark: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#ffffff",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#ffffff",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+              background: "#1a1a1a",
+              mainBkg: "#2d2d2d",
+              secondBkg: "#3d3d3d",
+              tertiaryBkg: "#4d4d4d",
+            },
+            default: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#000000",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#000000",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+            },
+          },
+        });
+
+        
+        document.querySelectorAll(".mermaid").forEach((element) => {
+          element.removeAttribute("data-processed");
+          mermaid.init(undefined, element);
+        });
+      }, 100);
+    });
+  }
+</script>
+
 
 <script>
     let menu = document.getElementById('menu')

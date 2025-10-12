@@ -2,26 +2,26 @@
 <html lang="en" dir="auto">
 
 <head>
-	<meta name="generator" content="Hugo 0.145.0"><script src="/blogs/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=blogs/livereload" data-no-instant defer></script><meta charset="utf-8">
+	<meta name="generator" content="Hugo 0.145.0"><meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="robots" content="noindex, nofollow">
+<meta name="robots" content="index, follow">
 <title>Learning Loop</title>
 
 <meta name="description" content="">
 <meta name="author" content="">
-<link rel="canonical" href="http://localhost:1313/blogs/">
+<link rel="canonical" href="https://harshrai654.github.io/blogs/">
 <link crossorigin="anonymous" href="/blogs/assets/css/stylesheet.3100c559f5e5f9a03f24d0f501a11025c11322dfc9520791d926b4086ca75994.css" integrity="sha256-MQDFWfXl&#43;aA/JND1AaEQJcETIt/JUgeR2Sa0CGynWZQ=" rel="preload stylesheet" as="style">
-<link rel="icon" href="http://localhost:1313/blogs/favicon.ico">
-<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/blogs/favicon-16x16.png">
-<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/blogs/favicon-32x32.png">
-<link rel="apple-touch-icon" href="http://localhost:1313/blogs/apple-touch-icon.png">
-<link rel="mask-icon" href="http://localhost:1313/blogs/safari-pinned-tab.svg">
+<link rel="icon" href="https://harshrai654.github.io/blogs/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://harshrai654.github.io/blogs/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://harshrai654.github.io/blogs/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://harshrai654.github.io/blogs/apple-touch-icon.png">
+<link rel="mask-icon" href="https://harshrai654.github.io/blogs/safari-pinned-tab.svg">
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
-<link rel="alternate" type="application/rss+xml" href="http://localhost:1313/blogs/index.xml">
-<link rel="alternate" type="application/json" href="http://localhost:1313/blogs/index.json">
-<link rel="alternate" hreflang="en" href="http://localhost:1313/blogs/">
+<link rel="alternate" type="application/rss+xml" href="https://harshrai654.github.io/blogs/index.xml">
+<link rel="alternate" type="application/json" href="https://harshrai654.github.io/blogs/index.json">
+<link rel="alternate" hreflang="en" href="https://harshrai654.github.io/blogs/">
 <noscript>
     <style>
         #theme-toggle,
@@ -83,7 +83,7 @@
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="http://localhost:1313/blogs/" accesskey="h" title="Learning Loop (Alt + H)">Learning Loop</a>
+            <a href="https://harshrai654.github.io/blogs/" accesskey="h" title="Learning Loop (Alt + H)">Learning Loop</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -146,7 +146,32 @@
 
 <article class="post-entry"> 
   <header class="entry-header">
+    <h2 class="entry-hint-parent">Multipart Form Uploads - Busboy and Node Streams
+      <span class="entry-hint" title="Draft">
+        <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" fill="currentColor">
+          <path
+            d="M160-410v-60h300v60H160Zm0-165v-60h470v60H160Zm0-165v-60h470v60H160Zm360 580v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q9 9 13 20t4 22q0 11-4.5 22.5T862.09-380L643-160H520Zm300-263-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z" />
+        </svg>
+      </span>
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>I was recently investigating ways to improve the efficiency of file uploads to a Node.js server. This need arose after encountering a production bug where the absence of a maximum file size limit for uploads led to an out-of-memory crash due to file buffers consuming excessive heap memory. In this Node.js server, I was using Express and express-openapi-validator to document the server’s API with an OpenAPI specification. express-openapi-validator utilizes multer for file uploads. I had previously encountered this library whenever file uploads from forms needed to be handled in Node.js, but I never questioned why a separate library was necessary for file uploads. This time, I decided to go deeper to understand if a dedicated package for file uploads is truly needed, and if so, what specific benefits Multer or similar libraries provide. I initially needed to find a configuration option in express-openapi-validator to set a request-wide limit on the maximum size (in bytes) of data allowed in a request, including all file attachments. The express-openapi-validator package offers a fileUploader configuration (fileUploader documentation) that passes options directly to multer.
+...</p>
+  </div>
+  <footer class="entry-footer"><span title='2025-10-12 00:48:38 +0530 IST'>October 12, 2025</span>&nbsp;·&nbsp;17 min</footer>
+  <a class="entry-link" aria-label="post link to Multipart Form Uploads - Busboy and Node Streams" href="https://harshrai654.github.io/blogs/multipart-form-uploads---busboy-and-node-streams/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
     <h2 class="entry-hint-parent">Building Fault Tolerant KV Storage System - Part 2
+      <span class="entry-hint" title="Draft">
+        <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" fill="currentColor">
+          <path
+            d="M160-410v-60h300v60H160Zm0-165v-60h470v60H160Zm0-165v-60h470v60H160Zm360 580v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q9 9 13 20t4 22q0 11-4.5 22.5T862.09-380L643-160H520Zm300-263-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z" />
+        </svg>
+      </span>
     </h2>
   </header>
   <div class="entry-content">
@@ -154,8 +179,8 @@
 Concept of commit Index, lastApplied Index in RAFT state Explain setupLeader, lastContactFromLeader - how it helps in preventing election. A egenral flow of request from client with Start continuing with replicate method introduces in setpLeader and how CV helps in signalling for heartbeat or logs How AppendEntries as a single RPC does the jobs of both heartbeat and log replication How leader maintains next and match index and what does that mean Explain everything about replicate and AppendEntries RPC How Log correction happen reconileLogs and how we use optimisation there to reduce RPC trips Explain how applier runs on different thtread why it runs on different thread and how CV help their %% We previously discussed replicated state machines, leader election in the RAFT consensus algorithm, and log-based state maintenance. Now, we’ll focus on log replication across peer servers. We’ll also examine how RAFT ensures that the same commands are applied to the state machine at a given log index on every peer, because of the leader’s one-way log distribution to followers.
 ...</p>
   </div>
-  <footer class="entry-footer"><span title='2025-10-04 16:16:17 +0530 IST'>October 4, 2025</span>&nbsp;·&nbsp;10 min</footer>
-  <a class="entry-link" aria-label="post link to Building Fault Tolerant KV Storage System - Part 2" href="http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-2/"></a>
+  <footer class="entry-footer"><span title='2025-10-04 16:16:17 +0530 IST'>October 4, 2025</span>&nbsp;·&nbsp;13 min</footer>
+  <a class="entry-link" aria-label="post link to Building Fault Tolerant KV Storage System - Part 2" href="https://harshrai654.github.io/blogs/building-fault-tolerant-kv-storage-system---part-2/"></a>
 </article>
 
 <article class="post-entry"> 
@@ -169,7 +194,7 @@ Replicated State Machine A replicated state machine is essentially a collection 
 ...</p>
   </div>
   <footer class="entry-footer"><span title='2025-10-03 20:38:34 +0530 IST'>October 3, 2025</span>&nbsp;·&nbsp;23 min</footer>
-  <a class="entry-link" aria-label="post link to Building Fault Tolerant KV Storage System - Part 1" href="http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-1/"></a>
+  <a class="entry-link" aria-label="post link to Building Fault Tolerant KV Storage System - Part 1" href="https://harshrai654.github.io/blogs/building-fault-tolerant-kv-storage-system---part-1/"></a>
 </article>
 
 <article class="post-entry"> 
@@ -183,7 +208,7 @@ What is Map-Reduce At its core, MapReduce is a programming model and an associat
 ...</p>
   </div>
   <footer class="entry-footer"><span title='2025-05-31 12:49:54 +0530 IST'>May 31, 2025</span>&nbsp;·&nbsp;34 min</footer>
-  <a class="entry-link" aria-label="post link to Map Reduce" href="http://localhost:1313/blogs/map-reduce/"></a>
+  <a class="entry-link" aria-label="post link to Map Reduce" href="https://harshrai654.github.io/blogs/map-reduce/"></a>
 </article>
 
 <article class="post-entry"> 
@@ -197,7 +222,7 @@ Background After introducing metrics to our Node.js service, we started recordin
 ...</p>
   </div>
   <footer class="entry-footer"><span title='2025-04-06 14:21:54 +0530 IST'>April 6, 2025</span>&nbsp;·&nbsp;11 min</footer>
-  <a class="entry-link" aria-label="post link to Debugging Redis Latency" href="http://localhost:1313/blogs/debugging-redis-latency/"></a>
+  <a class="entry-link" aria-label="post link to Debugging Redis Latency" href="https://harshrai654.github.io/blogs/debugging-redis-latency/"></a>
 </article>
 
 <article class="post-entry"> 
@@ -210,7 +235,7 @@ Background After introducing metrics to our Node.js service, we started recordin
 ...</p>
   </div>
   <footer class="entry-footer"><span title='2025-03-02 16:15:01 +0530 IST'>March 2, 2025</span>&nbsp;·&nbsp;4 min</footer>
-  <a class="entry-link" aria-label="post link to Socket File Descriptor and TCP connections" href="http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections/"></a>
+  <a class="entry-link" aria-label="post link to Socket File Descriptor and TCP connections" href="https://harshrai654.github.io/blogs/socket-file-descriptor-and-tcp-connections/"></a>
 </article>
 
 <article class="post-entry"> 
@@ -224,7 +249,7 @@ Disk Blocks: The basic units of storage on the disk, each 4 KB in size. The disk
 ...</p>
   </div>
   <footer class="entry-footer"><span title='2025-03-01 20:41:00 +0000 UTC'>March 1, 2025</span>&nbsp;·&nbsp;6 min</footer>
-  <a class="entry-link" aria-label="post link to Understanding Inodes and Disk Layout" href="http://localhost:1313/blogs/file-system-implementation/"></a>
+  <a class="entry-link" aria-label="post link to Understanding Inodes and Disk Layout" href="https://harshrai654.github.io/blogs/file-system-implementation/"></a>
 </article>
 
 <article class="post-entry"> 
@@ -239,7 +264,7 @@ open(path, flags): Opens a file and returns a file descriptor (fd). read(fd, buf
 ...</p>
   </div>
   <footer class="entry-footer"><span title='2025-02-23 20:41:00 +0000 UTC'>February 23, 2025</span>&nbsp;·&nbsp;11 min</footer>
-  <a class="entry-link" aria-label="post link to Files And Directories" href="http://localhost:1313/blogs/files-and-directories/"></a>
+  <a class="entry-link" aria-label="post link to Files And Directories" href="https://harshrai654.github.io/blogs/files-and-directories/"></a>
 </article>
 
 <article class="post-entry"> 
@@ -253,7 +278,7 @@ Capacity - How much capacity is needed to store X bytes of data Reliability - Ho
 ...</p>
   </div>
   <footer class="entry-footer"><span title='2025-02-13 20:25:14 +0530 IST'>February 13, 2025</span>&nbsp;·&nbsp;7 min</footer>
-  <a class="entry-link" aria-label="post link to RAID (Redundant array of inexpensive disk)" href="http://localhost:1313/blogs/raid-redundant-array-of-inexpensive-disk/"></a>
+  <a class="entry-link" aria-label="post link to RAID (Redundant array of inexpensive disk)" href="https://harshrai654.github.io/blogs/raid-redundant-array-of-inexpensive-disk/"></a>
 </article>
 
 <article class="post-entry"> 
@@ -266,33 +291,18 @@ Capacity - How much capacity is needed to store X bytes of data Reliability - Ho
 ...</p>
   </div>
   <footer class="entry-footer"><span title='2024-11-26 20:29:34 +0530 IST'>November 26, 2024</span>&nbsp;·&nbsp;4 min</footer>
-  <a class="entry-link" aria-label="post link to Multilevel Page table" href="http://localhost:1313/blogs/multilevel-page-table/"></a>
-</article>
-
-<article class="post-entry"> 
-  <header class="entry-header">
-    <h2 class="entry-hint-parent">TLB
-    </h2>
-  </header>
-  <div class="entry-content">
-    <p>TLB Translation look-aside buffer is a CPU cache which is generally small but since it is closer to CPU a TLB hit results in address translation to happen in 1-5 CPU cycles.
-CPU Cycle Time taken by CPU to fully execute an instruction, while CPU frequency refers to the number of these cycles that occur per second
-A TLB hit means for given virtual address the physical frame number was found in the TLB cache. A TLB hit will benefit all the address that lie on the same page. In the above given image page size is 16 bytes, so 4 INT variables can be saved in a single page, so a TLB hit of VPN 07 will serve address translation for VPN = 07 &#43; page of offset of 0, 4,8 and 12 byte. This type of caching is benefitted from spatial locality of data where a cache hit results in cache hits for surrounding data as well. If we cache data and other data points which are more probable to get accessed in the same time frame (like loop variables etc) then such caching is benefitted from Temporal locality.
-...</p>
-  </div>
-  <footer class="entry-footer"><span title='2024-11-20 22:26:06 +0530 IST'>November 20, 2024</span>&nbsp;·&nbsp;2 min</footer>
-  <a class="entry-link" aria-label="post link to TLB" href="http://localhost:1313/blogs/tlb/"></a>
+  <a class="entry-link" aria-label="post link to Multilevel Page table" href="https://harshrai654.github.io/blogs/multilevel-page-table/"></a>
 </article>
 <footer class="page-footer">
   <nav class="pagination">
-    <a class="next" href="http://localhost:1313/blogs/page/2/">Next&nbsp;&nbsp;»
+    <a class="next" href="https://harshrai654.github.io/blogs/page/2/">Next&nbsp;&nbsp;»
     </a>
   </nav>
 </footer>
     </main>
     
 <footer class="footer">
-        <span>&copy; 2025 <a href="http://localhost:1313/blogs/">Learning Loop</a></span> · 
+        <span>&copy; 2025 <a href="https://harshrai654.github.io/blogs/">Learning Loop</a></span> · 
 
     <span>
         Powered by
@@ -304,7 +314,89 @@ A TLB hit means for given virtual address the physical frame number was found in
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
         <path d="M12 6H0l6-6z" />
     </svg>
-</a>
+</a><script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";
+
+  
+  function isDarkMode() {
+    return (
+      document.body.classList.contains("dark") ||
+      localStorage.getItem("pref-theme") === "dark" ||
+      (!localStorage.getItem("pref-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    );
+  }
+
+  
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDarkMode() ? "dark" : "default",
+    themeVariables: {
+      dark: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#ffffff",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#ffffff",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+        background: "#1a1a1a",
+        mainBkg: "#2d2d2d",
+        secondBkg: "#3d3d3d",
+        tertiaryBkg: "#4d4d4d",
+      },
+      default: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#000000",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#000000",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+      },
+    },
+  });
+
+  
+  const themeToggle = document.getElementById("theme-toggle");
+  if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+      setTimeout(() => {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: isDarkMode() ? "dark" : "default",
+          themeVariables: {
+            dark: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#ffffff",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#ffffff",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+              background: "#1a1a1a",
+              mainBkg: "#2d2d2d",
+              secondBkg: "#3d3d3d",
+              tertiaryBkg: "#4d4d4d",
+            },
+            default: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#000000",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#000000",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+            },
+          },
+        });
+
+        
+        document.querySelectorAll(".mermaid").forEach((element) => {
+          element.removeAttribute("data-processed");
+          mermaid.init(undefined, element);
+        });
+      }, 100);
+    });
+  }
+</script>
+
 
 <script>
     let menu = document.getElementById('menu')

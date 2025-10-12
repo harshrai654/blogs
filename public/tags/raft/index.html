@@ -1,25 +1,25 @@
 <!DOCTYPE html>
 <html lang="en" dir="auto">
 
-<head><script src="/blogs/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=blogs/livereload" data-no-instant defer></script><meta charset="utf-8">
+<head><meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="robots" content="noindex, nofollow">
+<meta name="robots" content="index, follow">
 <title>RAFT | Learning Loop</title>
 <meta name="keywords" content="">
 <meta name="description" content="">
 <meta name="author" content="">
-<link rel="canonical" href="http://localhost:1313/blogs/tags/raft/">
+<link rel="canonical" href="https://harshrai654.github.io/blogs/tags/raft/">
 <link crossorigin="anonymous" href="/blogs/assets/css/stylesheet.3100c559f5e5f9a03f24d0f501a11025c11322dfc9520791d926b4086ca75994.css" integrity="sha256-MQDFWfXl&#43;aA/JND1AaEQJcETIt/JUgeR2Sa0CGynWZQ=" rel="preload stylesheet" as="style">
-<link rel="icon" href="http://localhost:1313/blogs/favicon.ico">
-<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/blogs/favicon-16x16.png">
-<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/blogs/favicon-32x32.png">
-<link rel="apple-touch-icon" href="http://localhost:1313/blogs/apple-touch-icon.png">
-<link rel="mask-icon" href="http://localhost:1313/blogs/safari-pinned-tab.svg">
+<link rel="icon" href="https://harshrai654.github.io/blogs/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://harshrai654.github.io/blogs/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://harshrai654.github.io/blogs/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://harshrai654.github.io/blogs/apple-touch-icon.png">
+<link rel="mask-icon" href="https://harshrai654.github.io/blogs/safari-pinned-tab.svg">
 <meta name="theme-color" content="#2e2e33">
 <meta name="msapplication-TileColor" content="#2e2e33">
-<link rel="alternate" type="application/rss+xml" href="http://localhost:1313/blogs/tags/raft/index.xml">
-<link rel="alternate" hreflang="en" href="http://localhost:1313/blogs/tags/raft/">
+<link rel="alternate" type="application/rss+xml" href="https://harshrai654.github.io/blogs/tags/raft/index.xml">
+<link rel="alternate" hreflang="en" href="https://harshrai654.github.io/blogs/tags/raft/">
 <noscript>
     <style>
         #theme-toggle,
@@ -81,7 +81,7 @@
 <header class="header">
     <nav class="nav">
         <div class="logo">
-            <a href="http://localhost:1313/blogs/" accesskey="h" title="Learning Loop (Alt + H)">Learning Loop</a>
+            <a href="https://harshrai654.github.io/blogs/" accesskey="h" title="Learning Loop (Alt + H)">Learning Loop</a>
             <div class="logo-switches">
                 <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
                     <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
@@ -110,7 +110,7 @@
     </nav>
 </header>
 <main class="main"> 
-<header class="page-header"><div class="breadcrumbs"><a href="http://localhost:1313/blogs/">Home</a>&nbsp;»&nbsp;<a href="http://localhost:1313/blogs/tags/">Tags</a></div>
+<header class="page-header"><div class="breadcrumbs"><a href="https://harshrai654.github.io/blogs/">Home</a>&nbsp;»&nbsp;<a href="https://harshrai654.github.io/blogs/tags/">Tags</a></div>
   <h1>
     RAFT
   </h1>
@@ -119,6 +119,12 @@
 <article class="post-entry tag-entry"> 
   <header class="entry-header">
     <h2 class="entry-hint-parent">Building Fault Tolerant KV Storage System - Part 2
+      <span class="entry-hint" title="Draft">
+        <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" fill="currentColor">
+          <path
+            d="M160-410v-60h300v60H160Zm0-165v-60h470v60H160Zm0-165v-60h470v60H160Zm360 580v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q9 9 13 20t4 22q0 11-4.5 22.5T862.09-380L643-160H520Zm300-263-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z" />
+        </svg>
+      </span>
     </h2>
   </header>
   <div class="entry-content">
@@ -126,13 +132,13 @@
 Concept of commit Index, lastApplied Index in RAFT state Explain setupLeader, lastContactFromLeader - how it helps in preventing election. A egenral flow of request from client with Start continuing with replicate method introduces in setpLeader and how CV helps in signalling for heartbeat or logs How AppendEntries as a single RPC does the jobs of both heartbeat and log replication How leader maintains next and match index and what does that mean Explain everything about replicate and AppendEntries RPC How Log correction happen reconileLogs and how we use optimisation there to reduce RPC trips Explain how applier runs on different thtread why it runs on different thread and how CV help their %% We previously discussed replicated state machines, leader election in the RAFT consensus algorithm, and log-based state maintenance. Now, we’ll focus on log replication across peer servers. We’ll also examine how RAFT ensures that the same commands are applied to the state machine at a given log index on every peer, because of the leader’s one-way log distribution to followers.
 ...</p>
   </div>
-  <footer class="entry-footer"><span title='2025-10-04 16:16:17 +0530 IST'>October 4, 2025</span>&nbsp;·&nbsp;10 min</footer>
-  <a class="entry-link" aria-label="post link to Building Fault Tolerant KV Storage System - Part 2" href="http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-2/"></a>
+  <footer class="entry-footer"><span title='2025-10-04 16:16:17 +0530 IST'>October 4, 2025</span>&nbsp;·&nbsp;13 min</footer>
+  <a class="entry-link" aria-label="post link to Building Fault Tolerant KV Storage System - Part 2" href="https://harshrai654.github.io/blogs/building-fault-tolerant-kv-storage-system---part-2/"></a>
 </article>
     </main>
     
 <footer class="footer">
-        <span>&copy; 2025 <a href="http://localhost:1313/blogs/">Learning Loop</a></span> · 
+        <span>&copy; 2025 <a href="https://harshrai654.github.io/blogs/">Learning Loop</a></span> · 
 
     <span>
         Powered by
@@ -144,7 +150,89 @@ Concept of commit Index, lastApplied Index in RAFT state Explain setupLeader, la
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
         <path d="M12 6H0l6-6z" />
     </svg>
-</a>
+</a><script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";
+
+  
+  function isDarkMode() {
+    return (
+      document.body.classList.contains("dark") ||
+      localStorage.getItem("pref-theme") === "dark" ||
+      (!localStorage.getItem("pref-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    );
+  }
+
+  
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDarkMode() ? "dark" : "default",
+    themeVariables: {
+      dark: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#ffffff",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#ffffff",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+        background: "#1a1a1a",
+        mainBkg: "#2d2d2d",
+        secondBkg: "#3d3d3d",
+        tertiaryBkg: "#4d4d4d",
+      },
+      default: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#000000",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#000000",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+      },
+    },
+  });
+
+  
+  const themeToggle = document.getElementById("theme-toggle");
+  if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+      setTimeout(() => {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: isDarkMode() ? "dark" : "default",
+          themeVariables: {
+            dark: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#ffffff",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#ffffff",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+              background: "#1a1a1a",
+              mainBkg: "#2d2d2d",
+              secondBkg: "#3d3d3d",
+              tertiaryBkg: "#4d4d4d",
+            },
+            default: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#000000",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#000000",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+            },
+          },
+        });
+
+        
+        document.querySelectorAll(".mermaid").forEach((element) => {
+          element.removeAttribute("data-processed");
+          mermaid.init(undefined, element);
+        });
+      }, 100);
+    });
+  }
+</script>
+
 
 <script>
     let menu = document.getElementById('menu')

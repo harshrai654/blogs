@@ -2,17 +2,25 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Networking on Learning Loop</title>
-    <link>http://localhost:1313/blogs/tags/networking/</link>
+    <link>https://harshrai654.github.io/blogs/tags/networking/</link>
     <description>Recent content in Networking on Learning Loop</description>
     <generator>Hugo -- 0.145.0</generator>
     <language>en-us</language>
-    <lastBuildDate>Sun, 06 Apr 2025 14:21:54 +0530</lastBuildDate>
-    <atom:link href="http://localhost:1313/blogs/tags/networking/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sun, 12 Oct 2025 00:48:38 +0530</lastBuildDate>
+    <atom:link href="https://harshrai654.github.io/blogs/tags/networking/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Multipart Form Uploads - Busboy and Node Streams</title>
+      <link>https://harshrai654.github.io/blogs/multipart-form-uploads---busboy-and-node-streams/</link>
+      <pubDate>Sun, 12 Oct 2025 00:48:38 +0530</pubDate>
+      <guid>https://harshrai654.github.io/blogs/multipart-form-uploads---busboy-and-node-streams/</guid>
+      <description>&lt;p&gt;I was recently investigating ways to improve the efficiency of file uploads to a Node.js server. This need arose after encountering a production bug where the absence of a maximum file size limit for uploads led to an out-of-memory crash due to file buffers consuming excessive heap memory. In this Node.js server, I was using Express and &lt;code&gt;express-openapi-validator&lt;/code&gt; to document the server&amp;rsquo;s API with an &lt;code&gt;OpenAPI&lt;/code&gt; specification. &lt;code&gt;express-openapi-validator&lt;/code&gt; utilizes &lt;code&gt;multer&lt;/code&gt; for file uploads. I had previously encountered this library whenever file uploads from forms needed to be handled in Node.js, but I never questioned why a separate library was necessary for file uploads. This time, I decided to go deeper to understand if a dedicated package for file uploads is truly needed, and if so, what specific benefits &lt;code&gt;Multer&lt;/code&gt; or similar libraries provide.
+I initially needed to find a configuration option in &lt;code&gt;express-openapi-validator&lt;/code&gt; to set a request-wide limit on the maximum size (in bytes) of data allowed in a request, including all file attachments.  The &lt;code&gt;express-openapi-validator&lt;/code&gt; package offers a &lt;code&gt;fileUploader&lt;/code&gt; configuration (&lt;a href=&#34;https://cdimascio.github.io/express-openapi-validator-documentation/usage-file-uploader/&#34;&gt;fileUploader documentation&lt;/a&gt;) that passes options directly to &lt;code&gt;multer&lt;/code&gt;.&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Debugging Redis Latency</title>
-      <link>http://localhost:1313/blogs/debugging-redis-latency/</link>
+      <link>https://harshrai654.github.io/blogs/debugging-redis-latency/</link>
       <pubDate>Sun, 06 Apr 2025 14:21:54 +0530</pubDate>
-      <guid>http://localhost:1313/blogs/debugging-redis-latency/</guid>
+      <guid>https://harshrai654.github.io/blogs/debugging-redis-latency/</guid>
       <description>&lt;p&gt;This article is about how at work we solved the issue of high response time while executing Redis commands from Node.js server to a Redis compatible database known as dragonfly.&lt;/p&gt;
 &lt;h2 id=&#34;background&#34;&gt;Background&lt;/h2&gt;
 &lt;p&gt;After introducing metrics to our Node.js service, we started recording the overall response time whenever a Redis command was executed. We had a wrapper service around a Redis driver known as &lt;code&gt;ioredis&lt;/code&gt; for interacting with our Redis-compatible database.
@@ -20,9 +28,9 @@ Once we set up Grafana dashboards for metrics like cache latency, we saw unusual
     </item>
     <item>
       <title>Socket File Descriptor and TCP connections</title>
-      <link>http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections/</link>
+      <link>https://harshrai654.github.io/blogs/socket-file-descriptor-and-tcp-connections/</link>
       <pubDate>Sun, 02 Mar 2025 16:15:01 +0530</pubDate>
-      <guid>http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections/</guid>
+      <guid>https://harshrai654.github.io/blogs/socket-file-descriptor-and-tcp-connections/</guid>
       <description>&lt;h2 id=&#34;socket-file-descriptors-and-their-kernel-structures&#34;&gt;Socket File Descriptors and Their Kernel Structures&lt;/h2&gt;
 &lt;ul&gt;
 &lt;li&gt;A &lt;strong&gt;socket&lt;/strong&gt; is a special type of file descriptor (FD) in Linux, represented as &lt;code&gt;socket:[inode]&lt;/code&gt;.&lt;/li&gt;

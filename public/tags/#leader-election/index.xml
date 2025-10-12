@@ -2,36 +2,36 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>#Leader-Election on Learning Loop</title>
-    <link>http://localhost:1313/blogs/tags/%23leader-election/</link>
+    <link>https://harshrai654.github.io/blogs/tags/%23leader-election/</link>
     <description>Recent content in #Leader-Election on Learning Loop</description>
     <generator>Hugo -- 0.145.0</generator>
     <language>en-us</language>
     <lastBuildDate>Sat, 04 Oct 2025 16:16:17 +0530</lastBuildDate>
-    <atom:link href="http://localhost:1313/blogs/tags/%23leader-election/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://harshrai654.github.io/blogs/tags/%23leader-election/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Building Fault Tolerant KV Storage System - Part 2</title>
-      <link>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-2/</link>
+      <link>https://harshrai654.github.io/blogs/building-fault-tolerant-kv-storage-system---part-2/</link>
       <pubDate>Sat, 04 Oct 2025 16:16:17 +0530</pubDate>
-      <guid>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-2/</guid>
+      <guid>https://harshrai654.github.io/blogs/building-fault-tolerant-kv-storage-system---part-2/</guid>
       <description>&lt;p&gt;%% Explain sequence:&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;Concept of commit Index, lastApplied Index in RAFT state&lt;/li&gt;
 &lt;li&gt;Explain setupLeader, lastContactFromLeader - how it helps in preventing election.&lt;/li&gt;
 &lt;li&gt;A egenral flow of request from client with Start continuing with&lt;/li&gt;
-&lt;li&gt;replicate method introduces in setpLeader and how CV helps in signalling for heartbeat or logs&lt;/li&gt;
-&lt;li&gt;How AppendEntries as a single RPC does the jobs of both heartbeat and log replication&lt;/li&gt;
-&lt;li&gt;How leader maintains next and match index and what does that mean&lt;/li&gt;
+&lt;li&gt;&lt;del&gt;replicate method introduces in setpLeader and how CV helps in signalling for heartbeat or logs&lt;/del&gt;&lt;/li&gt;
+&lt;li&gt;&lt;del&gt;How AppendEntries as a single RPC does the jobs of both heartbeat and log replication&lt;/del&gt;&lt;/li&gt;
+&lt;li&gt;&lt;del&gt;How leader maintains next and match index and what does that mean&lt;/del&gt;&lt;/li&gt;
 &lt;li&gt;Explain everything about replicate and AppendEntries RPC&lt;/li&gt;
 &lt;li&gt;How Log correction happen &lt;code&gt;reconileLogs&lt;/code&gt;  and how we use optimisation there to reduce RPC trips&lt;/li&gt;
 &lt;li&gt;Explain how applier runs on different thtread why it runs on different thread and how CV help their %%&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;We &lt;a href=&#34;http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-1/&#34;&gt;previously discussed&lt;/a&gt; replicated state machines, leader election in the RAFT consensus algorithm, and log-based state maintenance. Now, we&amp;rsquo;ll focus on log replication across peer servers. We&amp;rsquo;ll also examine how RAFT ensures that the same commands are applied to the state machine at a given log index on every peer, because of the leader&amp;rsquo;s one-way log distribution to followers.&lt;/p&gt;</description>
+&lt;p&gt;We &lt;a href=&#34;https://harshrai654.github.io/blogs/building-fault-tolerant-kv-storage-system---part-1/&#34;&gt;previously discussed&lt;/a&gt; replicated state machines, leader election in the RAFT consensus algorithm, and log-based state maintenance. Now, we&amp;rsquo;ll focus on log replication across peer servers. We&amp;rsquo;ll also examine how RAFT ensures that the same commands are applied to the state machine at a given log index on every peer, because of the leader&amp;rsquo;s one-way log distribution to followers.&lt;/p&gt;</description>
     </item>
     <item>
       <title>Building Fault Tolerant KV Storage System - Part 1</title>
-      <link>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-1/</link>
+      <link>https://harshrai654.github.io/blogs/building-fault-tolerant-kv-storage-system---part-1/</link>
       <pubDate>Fri, 03 Oct 2025 20:38:34 +0530</pubDate>
-      <guid>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-1/</guid>
+      <guid>https://harshrai654.github.io/blogs/building-fault-tolerant-kv-storage-system---part-1/</guid>
       <description>&lt;p&gt;This blog post is part of a series detailing my implementation of a fault-tolerant key-value server using the RAFT consensus protocol.
 Before diving into RAFT and its mechanics, it&amp;rsquo;s crucial to grasp the concept of a replicated state machine and its significance in building systems that are both fault-tolerant and highly available.&lt;/p&gt;
 &lt;h2 id=&#34;replicated-state-machine&#34;&gt;Replicated State Machine&lt;/h2&gt;

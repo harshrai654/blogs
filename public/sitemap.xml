@@ -2,6 +2,30 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>http://localhost:1313/blogs/</loc>
+    <lastmod>2025-10-12T00:48:38+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/memory/</loc>
+    <lastmod>2025-10-12T00:48:38+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/multipart-form-uploads---busboy-and-node-streams/</loc>
+    <lastmod>2025-10-12T00:48:38+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/networking/</loc>
+    <lastmod>2025-10-12T00:48:38+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/nodejs/</loc>
+    <lastmod>2025-10-12T00:48:38+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/os/</loc>
+    <lastmod>2025-10-12T00:48:38+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/</loc>
+    <lastmod>2025-10-12T00:48:38+05:30</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blogs/tags/tcp/</loc>
+    <lastmod>2025-10-12T00:48:38+05:30</lastmod>
+  </url><url>
     <loc>http://localhost:1313/blogs/tags/%23leader-election/</loc>
     <lastmod>2025-10-04T16:16:17+05:30</lastmod>
   </url><url>
@@ -11,13 +35,7 @@
     <loc>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-2/</loc>
     <lastmod>2025-10-04T16:16:17+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/</loc>
-    <lastmod>2025-10-04T16:16:17+05:30</lastmod>
-  </url><url>
     <loc>http://localhost:1313/blogs/tags/raft/</loc>
-    <lastmod>2025-10-04T16:16:17+05:30</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/blogs/tags/</loc>
     <lastmod>2025-10-04T16:16:17+05:30</lastmod>
   </url><url>
     <loc>http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-1/</loc>
@@ -32,22 +50,13 @@
     <loc>http://localhost:1313/blogs/debugging-redis-latency/</loc>
     <lastmod>2025-04-06T14:21:54+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/networking/</loc>
-    <lastmod>2025-04-06T14:21:54+05:30</lastmod>
-  </url><url>
     <loc>http://localhost:1313/blogs/tags/observability/</loc>
     <lastmod>2025-04-06T14:21:54+05:30</lastmod>
   </url><url>
     <loc>http://localhost:1313/blogs/tags/filesystem/</loc>
     <lastmod>2025-03-02T16:15:01+05:30</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blogs/tags/os/</loc>
-    <lastmod>2025-03-02T16:15:01+05:30</lastmod>
-  </url><url>
     <loc>http://localhost:1313/blogs/socket-file-descriptor-and-tcp-connections/</loc>
-    <lastmod>2025-03-02T16:15:01+05:30</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/blogs/tags/tcp/</loc>
     <lastmod>2025-03-02T16:15:01+05:30</lastmod>
   </url><url>
     <loc>http://localhost:1313/blogs/tags/disk/</loc>
@@ -66,9 +75,6 @@
     <lastmod>2025-02-13T20:25:14+05:30</lastmod>
   </url><url>
     <loc>http://localhost:1313/blogs/tags/cache/</loc>
-    <lastmod>2024-11-26T20:29:34+05:30</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/blogs/tags/memory/</loc>
     <lastmod>2024-11-26T20:29:34+05:30</lastmod>
   </url><url>
     <loc>http://localhost:1313/blogs/multilevel-page-table/</loc>

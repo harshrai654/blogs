@@ -127,8 +127,14 @@ We previously discussed replicated state machines, leader election in the RAFT c
     <div class="breadcrumbs"><a href="http://localhost:1313/blogs/">Home</a></div>
     <h1 class="post-title entry-hint-parent">
       Building Fault Tolerant KV Storage System - Part 2
+      <span class="entry-hint" title="Draft">
+        <svg xmlns="http://www.w3.org/2000/svg" height="35" viewBox="0 -960 960 960" fill="currentColor">
+          <path
+            d="M160-410v-60h300v60H160Zm0-165v-60h470v60H160Zm0-165v-60h470v60H160Zm360 580v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q9 9 13 20t4 22q0 11-4.5 22.5T862.09-380L643-160H520Zm300-263-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z" />
+        </svg>
+      </span>
     </h1>
-    <div class="post-meta"><span title='2025-10-04 16:16:17 +0530 IST'>October 4, 2025</span>&nbsp;·&nbsp;10 min
+    <div class="post-meta"><span title='2025-10-04 16:16:17 +0530 IST'>October 4, 2025</span>&nbsp;·&nbsp;13 min
 
 </div>
   </header> <div class="toc">
@@ -144,7 +150,11 @@ We previously discussed replicated state machines, leader election in the RAFT c
                     <a href="#log-replication" aria-label="Log Replication">Log Replication</a><ul>
                         
                 <li>
-                    <a href="#heartbeat-rules" aria-label="Heartbeat rules">Heartbeat rules</a></li></ul>
+                    <a href="#heartbeat-rules" aria-label="Heartbeat rules">Heartbeat rules</a></li>
+                <li>
+                    <a href="#handling-appendentries-rpc" aria-label="Handling AppendEntries RPC">Handling AppendEntries RPC</a></li>
+                <li>
+                    <a href="#committing-and-applying-log-entries" aria-label="Committing and Applying Log Entries">Committing and Applying Log Entries</a></li></ul>
                 </li></ul>
                     
                 <li>
@@ -160,9 +170,9 @@ We previously discussed replicated state machines, leader election in the RAFT c
 <li>Concept of commit Index, lastApplied Index in RAFT state</li>
 <li>Explain setupLeader, lastContactFromLeader - how it helps in preventing election.</li>
 <li>A egenral flow of request from client with Start continuing with</li>
-<li>replicate method introduces in setpLeader and how CV helps in signalling for heartbeat or logs</li>
-<li>How AppendEntries as a single RPC does the jobs of both heartbeat and log replication</li>
-<li>How leader maintains next and match index and what does that mean</li>
+<li><del>replicate method introduces in setpLeader and how CV helps in signalling for heartbeat or logs</del></li>
+<li><del>How AppendEntries as a single RPC does the jobs of both heartbeat and log replication</del></li>
+<li><del>How leader maintains next and match index and what does that mean</del></li>
 <li>Explain everything about replicate and AppendEntries RPC</li>
 <li>How Log correction happen <code>reconileLogs</code>  and how we use optimisation there to reduce RPC trips</li>
 <li>Explain how applier runs on different thtread why it runs on different thread and how CV help their %%</li>
@@ -435,13 +445,32 @@ A condition variable provides functions like <code>Wait</code>, <code>Signal</co
 </span></span><span class="line"><span class="ln">233</span><span class="cl">	<span class="p">}</span>
 </span></span><span class="line"><span class="ln">234</span><span class="cl"><span class="p">}</span>
 </span></span></code></pre></div><p>The <code>replicate</code> function operates in a continuous loop. Inside this loop, a <code>select</code> statement monitors the leader&rsquo;s context (<code>ctx</code>) status. If <code>ctx.Done()</code> is not yet closed, it confirms the current server is still the leader. To ensure correctness, the server&rsquo;s current state is also checked to be <code>StateLeader</code>. If it&rsquo;s not, <code>rf.leaderCanelFunc</code> is explicitly called to relinquish leadership, which closes the context&rsquo;s done channel, signalling the leader&rsquo;s relinquishment to other components. Additionally, the loop waits on <code>rf.replicatorCond</code> when there are no more logs to transmit and no log mismatch between the leader&rsquo;s and the peer&rsquo;s logs.
-As mentioned in Part 1 of this blog series, servers periodically compact their logs to manage their size. This involves taking a snapshot of the current state and then truncating the log up to that point. If a follower&rsquo;s log is significantly behind the leader&rsquo;s and the leader has already truncated its log, the leader may need to send a snapshot using the <code>InstallSnapshot</code> RPC. We will delve deeper into log compaction in a later part of this series.
+As mentioned in <a href="/blogs/building-fault-tolerant-kv-storage-system---part-1/">Part 1 of this blog series</a>, servers periodically compact their logs to manage their size. This involves taking a snapshot of the current state and then truncating the log up to that point. If a follower&rsquo;s log is significantly behind the leader&rsquo;s and the leader has already truncated its log, the leader may need to send a snapshot using the <code>InstallSnapshot</code> RPC. We will delve deeper into log compaction in a later part of this series.
 Leader maintains volatile state for each peer <code>nextIndex</code> and <code>matchIndex</code>, these two properties for each peer are maintained by the leader, and it tells the leader which next log index to send to the peer and index up to which logs are replicated for that peer respectively.</p>
 <h3 id="heartbeat-rules">Heartbeat rules<a hidden class="anchor" aria-hidden="true" href="#heartbeat-rules">#</a></h3>
-<p><code>AppendEntries</code> RPC itself works as a heartbeat message from leader to all followers keeping the followers informed about who the leader is and what is the current state of logs at the leader&rsquo;s end and this RPC is only accepted by a follower if:</p>
+<p>The <code>AppendEntries</code> RPC also functions as a heartbeat, allowing the leader to communicate its identity and log status to all followers. A follower only accepts this RPC if:</p>
 <ul>
-<li><code>Term</code> value of RPC&rsquo;s arguments is atleast greater than or equal to follower&rsquo;s current term and as we have seen in the first part if this condition is not met then it means the sender of this RPC, which considers itself as the leader of that <code>args.Term</code> is falling behind and we should reject the RPC indicatting the sender to give up leadership</li>
+<li>The leader&rsquo;s <code>Term</code> value is greater than or equal to the follower&rsquo;s current term. If not, the follower rejects the RPC, signalling that the sender (mistakenly believing itself to be the leader) is outdated. The follower sends its own <code>reply.Term</code> to indicate this. Upon receiving a <code>Term</code> in the reply that is higher than its own, the leader relinquishes leadership.</li>
+<li>The leader includes <code>PrevLogIndex</code> and <code>PrevLogTerm</code> with each <code>AppendEntries</code> RPC. These values are vital, as they indicate the leader&rsquo;s log state by specifying the index and term of the log up to which the leader believes the follower&rsquo;s log matches. If there is a discrepancy, the follower responds with <code>reply.Success</code> set to false, indicating a log mismatch. The leader then decreases <code>nextIndex[peerIndex]</code> for that peer and sends another heartbeat with an earlier log index. This process continues until a matching log index is found. At that point, the follower accepts the leader&rsquo;s <code>AppendEntries</code> RPC and uses the <code>reconcileLogs</code> function to remove conflicting log entries and replace them with the log range sent by the leader from <code>[PrevLogIndex + 1, LatestLogIndexAtLeader]</code>. extracted from <code>args,Entries</code> field.
+This RAFT property is followed by each index of the follower, so if the current index and term match with the leader, so does the log index previous to this one, or else a conflict would have occurred previously itself. <strong>So this single property ensures that the log state matches between leader and follower up to the latest index;</strong> otherwise, the follower will not accept the heartbeat or normal <code>AppendEntries</code> RPC with log entries, <em>and the to-and-fro of heartbeats after that to find the non-conflict index at the follower is called the log correction process.</em> Later on, we will see how we can optimise this log correction because currently the leader needs to try for each log index in decreasing order, which can take a lot of time if the follower has been stale for a long time and during that time the leader&rsquo;s log has grown a lot.</li>
 </ul>
+<p><img alt="Pasted image 20251005180921.png" loading="lazy" src="/blogs/media/pasted-image-20251005180921.png">
+The image above, shows a simple successful log replication situation. Here, Follower 1 and Follower 2 have the same initial part of the log as the leader. Also, the leader knows exactly which parts of the log need to be sent to each follower.</p>
+<p>In the <code>replicate</code> method, we use a <code>logMismatch</code> flag within the replication loop. This flag shows if there was a log problem when sending the <code>AppendEntries</code> RPC in the last loop. If there was a problem, we don&rsquo;t wait (we don&rsquo;t call <code>rf.replicatorCond.Wait()</code>, which releases the lock and puts the thread to sleep). This is because, if there&rsquo;s a log problem, we want to fix the log quickly, so we send the next <code>AppendEntries</code> RPC right away with the updated previous log index and term.
+If the previous log index is less than the index up to which we&rsquo;ve taken a snapshot of the state and shortened the log, we send an <code>InstallSnapshot</code> RPC to send the snapshot to the follower instead, since we don&rsquo;t have the needed logs. We&rsquo;ll discuss snapshots and log compaction more later.
+We still follow one rule closely: if we get an RPC reply with a term value higher than the leader&rsquo;s current term, the leader gives up leadership by cancelling the context. See the <a href="/blogs/building-fault-tolerant-kv-storage-system---part-1/">previous part</a> for more information.</p>
+<p><img alt="Pasted image 20251005233402.png" loading="lazy" src="/blogs/media/pasted-image-20251005233402.png">
+In the image, follower 1&rsquo;s <code>nextIndex</code> is at index <code>7</code>. When an <code>AppendEntries</code> RPC is sent with <code>prevLogIndex=6</code> and <code>prevLogTerm=2</code>, the follower detects a log mismatch and rejects the RPC. Because the follower&rsquo;s term is also <code>2</code>, the leader keeps its leadership role and immediately reduces its <code>nextIndex</code> for follower 1 to <code>6</code>. It then sends another <code>AppendEntries</code> RPC (without waiting due to <code>logMismatch=true</code>) with <code>prevLogIndex=5</code> and <code>prevLogTerm=2</code>. This second RPC is accepted. The leader sends <code>Entries=[1, 2]</code>, causing the entries after index 5 to be replaced by these new entries (handled by ). <strong>Thus, the leader can erase uncommitted entries from the follower during log correction.</strong>
+Follower 2 accepts the initial <code>AppendEntries</code> RPC because there is no conflict. <strong>Since The leader manages each peer in its own separate goroutine</strong>, After each successful RPC response, the leader checks if a majority (replication factor) has replicated the log up to a specific index. In this scenario, once follower 2 responds (likely before follower 1, which is still correcting its log), the leader will have replicated log <code>index 7 on 2/3</code> of the peers (including itself).</p>
+<p>The leader then updates its <code>commitIndex</code> and signals a condition variable called <code>rf.applyCond</code>. First, we will examine how the follower handles the <code>AppendEntries</code> RPC.  Then, building on this understanding, we will discuss <code>commitIndex</code>, <code>lastApplied</code>, and<code> rf.applyCond</code>, explaining how they ensure log entries are committed, what &ldquo;committed&rdquo; means, what &ldquo;applying&rdquo; a log means, and how it is handled.&quot;</p>
+<h3 id="handling-appendentries-rpc">Handling <code>AppendEntries</code> RPC<a hidden class="anchor" aria-hidden="true" href="#handling-appendentries-rpc">#</a></h3>
+<ul>
+<li>AppendEntries code and expalantion</li>
+<li>reconcileLogs</li>
+<li>lastContactFromLeader</li>
+</ul>
+<h3 id="committing-and-applying-log-entries">Committing and Applying Log Entries<a hidden class="anchor" aria-hidden="true" href="#committing-and-applying-log-entries">#</a></h3>
+<p>``</p>
 <h1 id="references">References<a hidden class="anchor" aria-hidden="true" href="#references">#</a></h1>
 <ul>
 <li><a href="https://pdos.csail.mit.edu/6.824/papers/raft-extended.pdf">https://pdos.csail.mit.edu/6.824/papers/raft-extended.pdf</a></li>
@@ -460,6 +489,11 @@ Leader maintains volatile state for each peer <code>nextIndex</code> and <code>m
       <li><a href="http://localhost:1313/blogs/tags/raft/">RAFT</a></li>
     </ul>
 <nav class="paginav">
+  <a class="prev" href="http://localhost:1313/blogs/multipart-form-uploads---busboy-and-node-streams/">
+    <span class="title">« Prev</span>
+    <br>
+    <span>Multipart Form Uploads - Busboy and Node Streams</span>
+  </a>
   <a class="next" href="http://localhost:1313/blogs/building-fault-tolerant-kv-storage-system---part-1/">
     <span class="title">Next »</span>
     <br>
@@ -552,7 +586,89 @@ Leader maintains volatile state for each peer <code>nextIndex</code> and <code>m
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
         <path d="M12 6H0l6-6z" />
     </svg>
-</a>
+</a><script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";
+
+  
+  function isDarkMode() {
+    return (
+      document.body.classList.contains("dark") ||
+      localStorage.getItem("pref-theme") === "dark" ||
+      (!localStorage.getItem("pref-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    );
+  }
+
+  
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDarkMode() ? "dark" : "default",
+    themeVariables: {
+      dark: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#ffffff",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#ffffff",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+        background: "#1a1a1a",
+        mainBkg: "#2d2d2d",
+        secondBkg: "#3d3d3d",
+        tertiaryBkg: "#4d4d4d",
+      },
+      default: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#000000",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#000000",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+      },
+    },
+  });
+
+  
+  const themeToggle = document.getElementById("theme-toggle");
+  if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+      setTimeout(() => {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: isDarkMode() ? "dark" : "default",
+          themeVariables: {
+            dark: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#ffffff",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#ffffff",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+              background: "#1a1a1a",
+              mainBkg: "#2d2d2d",
+              secondBkg: "#3d3d3d",
+              tertiaryBkg: "#4d4d4d",
+            },
+            default: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#000000",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#000000",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+            },
+          },
+        });
+
+        
+        document.querySelectorAll(".mermaid").forEach((element) => {
+          element.removeAttribute("data-processed");
+          mermaid.init(undefined, element);
+        });
+      }, 100);
+    });
+  }
+</script>
+
 
 <script>
     let menu = document.getElementById('menu')

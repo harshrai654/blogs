@@ -263,7 +263,89 @@ For an address space of 32 bits and page size of 4 KB <em>(i.e. memory of 2^32 i
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
         <path d="M12 6H0l6-6z" />
     </svg>
-</a>
+</a><script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";
+
+  
+  function isDarkMode() {
+    return (
+      document.body.classList.contains("dark") ||
+      localStorage.getItem("pref-theme") === "dark" ||
+      (!localStorage.getItem("pref-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    );
+  }
+
+  
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDarkMode() ? "dark" : "default",
+    themeVariables: {
+      dark: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#ffffff",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#ffffff",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+        background: "#1a1a1a",
+        mainBkg: "#2d2d2d",
+        secondBkg: "#3d3d3d",
+        tertiaryBkg: "#4d4d4d",
+      },
+      default: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#000000",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#000000",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+      },
+    },
+  });
+
+  
+  const themeToggle = document.getElementById("theme-toggle");
+  if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+      setTimeout(() => {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: isDarkMode() ? "dark" : "default",
+          themeVariables: {
+            dark: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#ffffff",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#ffffff",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+              background: "#1a1a1a",
+              mainBkg: "#2d2d2d",
+              secondBkg: "#3d3d3d",
+              tertiaryBkg: "#4d4d4d",
+            },
+            default: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#000000",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#000000",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+            },
+          },
+        });
+
+        
+        document.querySelectorAll(".mermaid").forEach((element) => {
+          element.removeAttribute("data-processed");
+          mermaid.init(undefined, element);
+        });
+      }, 100);
+    });
+  }
+</script>
+
 
 <script>
     let menu = document.getElementById('menu')

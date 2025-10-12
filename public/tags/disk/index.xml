@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Disk on Learning Loop</title>
-    <link>http://localhost:1313/blogs/tags/disk/</link>
+    <link>https://harshrai654.github.io/blogs/tags/disk/</link>
     <description>Recent content in Disk on Learning Loop</description>
     <generator>Hugo -- 0.145.0</generator>
     <language>en-us</language>
     <lastBuildDate>Sat, 01 Mar 2025 20:41:00 +0000</lastBuildDate>
-    <atom:link href="http://localhost:1313/blogs/tags/disk/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://harshrai654.github.io/blogs/tags/disk/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Understanding Inodes and Disk Layout</title>
-      <link>http://localhost:1313/blogs/file-system-implementation/</link>
+      <link>https://harshrai654.github.io/blogs/file-system-implementation/</link>
       <pubDate>Sat, 01 Mar 2025 20:41:00 +0000</pubDate>
-      <guid>http://localhost:1313/blogs/file-system-implementation/</guid>
+      <guid>https://harshrai654.github.io/blogs/file-system-implementation/</guid>
       <description>&lt;h2 id=&#34;overall-organization-of-data-in-disks&#34;&gt;Overall Organization Of Data In Disks&lt;/h2&gt;
 &lt;p&gt;&lt;em&gt;Assuming we have a 256KB disk&lt;/em&gt;.&lt;/p&gt;
 &lt;ul&gt;
@@ -22,16 +22,16 @@
 &lt;li&gt;&lt;strong&gt;Inode Table (I)&lt;/strong&gt;: Blocks 3-7; an array of inodes, where each inode (256 bytes) holds metadata about a file, like size, permissions, and pointers to data blocks.
 5 blocks of 4KB will contain 80 256 byte inode strutures.&lt;/li&gt;
 &lt;li&gt;&lt;strong&gt;Data Region (D)&lt;/strong&gt;: Blocks 8-63; the largest section, storing the actual contents of files and directories.
-&lt;img alt=&#34;Pasted image 20250301204506.png&#34; loading=&#34;lazy&#34; src=&#34;http://localhost:1313/blogs/media/pasted-image-20250301204506.png&#34;&gt;&lt;/li&gt;
+&lt;img alt=&#34;Pasted image 20250301204506.png&#34; loading=&#34;lazy&#34; src=&#34;https://harshrai654.github.io/blogs/media/pasted-image-20250301204506.png&#34;&gt;&lt;/li&gt;
 &lt;/ul&gt;
 &lt;h2 id=&#34;inode&#34;&gt;Inode&lt;/h2&gt;
 &lt;p&gt;Every inode has a unique identifier called an &lt;strong&gt;inode number&lt;/strong&gt; (or &lt;strong&gt;i-number&lt;/strong&gt;). This number acts like a file’s address in the file system, allowing the operating system to quickly locate its inode. For example:&lt;/p&gt;</description>
     </item>
     <item>
       <title>Files And Directories</title>
-      <link>http://localhost:1313/blogs/files-and-directories/</link>
+      <link>https://harshrai654.github.io/blogs/files-and-directories/</link>
       <pubDate>Sun, 23 Feb 2025 20:41:00 +0000</pubDate>
-      <guid>http://localhost:1313/blogs/files-and-directories/</guid>
+      <guid>https://harshrai654.github.io/blogs/files-and-directories/</guid>
       <description>&lt;h1 id=&#34;files-and-directories&#34;&gt;Files and directories&lt;/h1&gt;
 &lt;p&gt;File systems virtualize persistent storage (e.g., hard drives, SSDs) into user-friendly files and directories, adding a third pillar to OS abstractions (processes for CPU, address spaces for memory).&lt;/p&gt;
 &lt;h2 id=&#34;file-paths-and-system-calls&#34;&gt;File Paths and System Calls&lt;/h2&gt;
@@ -47,9 +47,9 @@
     </item>
     <item>
       <title>RAID (Redundant array of inexpensive disk)</title>
-      <link>http://localhost:1313/blogs/raid-redundant-array-of-inexpensive-disk/</link>
+      <link>https://harshrai654.github.io/blogs/raid-redundant-array-of-inexpensive-disk/</link>
       <pubDate>Thu, 13 Feb 2025 20:25:14 +0530</pubDate>
-      <guid>http://localhost:1313/blogs/raid-redundant-array-of-inexpensive-disk/</guid>
+      <guid>https://harshrai654.github.io/blogs/raid-redundant-array-of-inexpensive-disk/</guid>
       <description>&lt;h1 id=&#34;raid-disks&#34;&gt;RAID Disks&lt;/h1&gt;
 &lt;p&gt;Three axes on which disks are analysed&lt;/p&gt;
 &lt;ul&gt;
