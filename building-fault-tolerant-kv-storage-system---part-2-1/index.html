@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><script src="/blogs/livereload.js?mindelay=10&amp;v=2&amp;port=63714&amp;path=blogs/livereload" data-no-instant defer></script><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="noindex, nofollow">
+<title>Building Fault Tolerant KV Storage System - Part 2 | Learning Loop</title>
+<meta name="keywords" content="#Replication, #Leader-Election, RAFT">
+<meta name="description" content="We previously discussed replicated state machines, leader election in the RAFT consensus algorithm, and log-based state maintenance. Now, we&rsquo;ll focus on log replication across peer servers. We&rsquo;ll also examine how RAFT ensures that the same commands are applied to the state machine at a given log index on every peer, because of the leader&rsquo;s one-way log distribution to followers.
+Leader Initialisation
+Once a candidate becomes leader we call setupLeader function which initiates go routine for each peer in the RAFT cluster, Each go routine of respective peer is responsible for replicating new log entries or sending heartbeat via AppendEntries  RPC.">
+<meta name="author" content="">
+<link rel="canonical" href="http://localhost:63714/blogs/building-fault-tolerant-kv-storage-system---part-2-1/">
+<link crossorigin="anonymous" href="/blogs/assets/css/stylesheet.3100c559f5e5f9a03f24d0f501a11025c11322dfc9520791d926b4086ca75994.css" integrity="sha256-MQDFWfXl&#43;aA/JND1AaEQJcETIt/JUgeR2Sa0CGynWZQ=" rel="preload stylesheet" as="style">
+<link rel="icon" href="http://localhost:63714/blogs/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:63714/blogs/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:63714/blogs/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:63714/blogs/apple-touch-icon.png">
+<link rel="mask-icon" href="http://localhost:63714/blogs/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:63714/blogs/building-fault-tolerant-kv-storage-system---part-2-1/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript> 
+<script
+  data-goatcounter="https://ttharsh.goatcounter.com/count"
+  async
+  src="//gc.zgo.at/count.js"
+></script>
+
+
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="http://localhost:63714/blogs/" accesskey="h" title="Learning Loop (Alt + H)">Learning Loop</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="http://localhost:63714/blogs/">Home</a></div>
+    <h1 class="post-title entry-hint-parent">
+      Building Fault Tolerant KV Storage System - Part 2
+      <span class="entry-hint" title="Draft">
+        <svg xmlns="http://www.w3.org/2000/svg" height="35" viewBox="0 -960 960 960" fill="currentColor">
+          <path
+            d="M160-410v-60h300v60H160Zm0-165v-60h470v60H160Zm0-165v-60h470v60H160Zm360 580v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q9 9 13 20t4 22q0 11-4.5 22.5T862.09-380L643-160H520Zm300-263-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z" />
+        </svg>
+      </span>
+    </h1>
+    <div class="post-meta"><span title='2025-10-04 16:16:17 +0530 IST'>October 4, 2025</span>&nbsp;·&nbsp;29 min
+
+</div>
+  </header> <div class="toc">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">Table of Contents</span>
+        </summary>
+
+        <div class="inner"><ul><ul>
+                <li>
+                    <a href="#leader-initialisation" aria-label="Leader Initialisation">Leader Initialisation</a></li>
+                <li>
+                    <a href="#log-replication" aria-label="Log Replication">Log Replication</a><ul>
+                        
+                <li>
+                    <a href="#heartbeat-rules" aria-label="Heartbeat rules">Heartbeat rules</a></li>
+                <li>
+                    <a href="#handling-appendentries-rpc" aria-label="Handling AppendEntries RPC">Handling AppendEntries RPC</a></li></ul>
+                </li>
+                <li>
+                    <a href="#committing-and-applying-log-entries" aria-label="Committing and Applying Log Entries">Committing and Applying Log Entries</a><ul>
+                        
+                <li>
+                    <a href="#why-majority-based-commitment-guarantees-safety" aria-label="Why Majority-Based Commitment Guarantees Safety">Why Majority-Based Commitment Guarantees Safety</a></li>
+                <li>
+                    <a href="#why-leader-commits-log-entry-when-its-of-currentterm-only" aria-label="Why leader commits log entry when its of currentTerm only?">Why leader commits log entry when its of currentTerm only?</a></li></ul>
+                </li></ul>
+                    
+                <li>
+                    <a href="#references" aria-label="References">References</a>
+                </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content"><p>We <a href="/blogs/building-fault-tolerant-kv-storage-system---part-1/">previously discussed</a> replicated state machines, leader election in the RAFT consensus algorithm, and log-based state maintenance. Now, we&rsquo;ll focus on log replication across peer servers. We&rsquo;ll also examine how RAFT ensures that the same commands are applied to the state machine at a given log index on every peer, because of the leader&rsquo;s one-way log distribution to followers.</p>
+<h2 id="leader-initialisation">Leader Initialisation<a hidden class="anchor" aria-hidden="true" href="#leader-initialisation">#</a></h2>
+<p>Once a candidate becomes leader we call <code>setupLeader</code> function which initiates go routine for each peer in the RAFT cluster, Each go routine of respective peer is responsible for replicating new log entries or sending heartbeat via <code>AppendEntries</code>  RPC.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-golang" data-lang="golang"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">rf</span> <span class="o">*</span><span class="nx">Raft</span><span class="p">)</span> <span class="nf">setupLeader</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 2</span><span class="cl">	<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 3</span><span class="cl">	<span class="k">defer</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 4</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 5</span><span class="cl">	<span class="nx">ctx</span><span class="p">,</span> <span class="nx">cancel</span> <span class="o">:=</span> <span class="nx">context</span><span class="p">.</span><span class="nf">WithCancel</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nf">Background</span><span class="p">())</span>
+</span></span><span class="line"><span class="ln"> 6</span><span class="cl">	<span class="nx">rf</span><span class="p">.</span><span class="nx">leaderCancelFunc</span> <span class="p">=</span> <span class="nx">cancel</span>
+</span></span><span class="line"><span class="ln"> 7</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 8</span><span class="cl">	<span class="k">for</span> <span class="nx">peerIndex</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">peers</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 9</span><span class="cl">		<span class="k">if</span> <span class="nx">peerIndex</span> <span class="o">!=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">10</span><span class="cl">			<span class="nx">rf</span><span class="p">.</span><span class="nx">nextIndex</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">]</span> <span class="p">=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span> <span class="o">+</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln">11</span><span class="cl">			<span class="k">go</span> <span class="nx">rf</span><span class="p">.</span><span class="nf">replicate</span><span class="p">(</span><span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">ctx</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">12</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln">13</span><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="ln">14</span><span class="cl">
+</span></span><span class="line"><span class="ln">15</span><span class="cl">	<span class="k">go</span> <span class="kd">func</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">16</span><span class="cl">		<span class="k">for</span> <span class="p">!</span><span class="nx">rf</span><span class="p">.</span><span class="nf">killed</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">17</span><span class="cl">			<span class="k">select</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">18</span><span class="cl">			<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">ctx</span><span class="p">.</span><span class="nf">Done</span><span class="p">():</span>
+</span></span><span class="line"><span class="ln">19</span><span class="cl">				<span class="k">return</span>
+</span></span><span class="line"><span class="ln">20</span><span class="cl">			<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">time</span><span class="p">.</span><span class="nf">After</span><span class="p">(</span><span class="nx">HEARTBEAT_TIMEOUT</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">21</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nx">replicatorCond</span><span class="p">.</span><span class="nf">Broadcast</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">22</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln">23</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln">24</span><span class="cl">	<span class="p">}()</span>
+</span></span><span class="line"><span class="ln">25</span><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>When starting a replication logic thread for each peer, we also send a Go context to <code>rf.replicate</code>. This context shows the current leader&rsquo;s status. If the leader steps down, we call <code>rf.leaderCancelFunc</code>, which cancels the context. When a context is canceled, the <code>ctx.Done()</code> channel closes, stopping any waiting for results from that channel. More information about Go&rsquo;s context can be found <a href="https://pkg.go.dev/context">here</a>.
+Our RAFT struct includes a condition variable, <code>replicatorCond</code> (of type <code>*sync.Cond</code>), that signals all peer goroutines of the leader to run the replication logic every <code>HEARTBEAT_TIMEOUT</code>. This ensures that a heartbeat is sent to each peer at the specified interval.
+A condition variable provides functions like <code>Wait</code>, <code>Signal</code>, and <code>Broadcast</code>. If multiple threads are waiting on a condition variable after releasing the underlying mutex, <code>Signal</code> will wake one of such waiting threads, and <code>Broadcast</code> will wake all waiting threads. Here we are using <code>Broadcast</code> to wake all waiting threads of each peer to send the next heartbeat. A condition variable is an operating system concept, and you can read more about the same from <a href="https://pages.cs.wisc.edu/~remzi/OSTEP/threads-cv.pdf">here</a>. To read about the API of Go&rsquo;s of type <code>*sync.Cond</code>, check Go&rsquo;s official Docs <a href="https://pkg.go.dev/sync#Cond">here</a>.</p>
+<h2 id="log-replication">Log Replication<a hidden class="anchor" aria-hidden="true" href="#log-replication">#</a></h2>
+<p>Each individual peer thread runs the replicate method, given below is implementation of <code>rf.replicate</code> function</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-golang" data-lang="golang"><span class="line"><span class="ln">  1</span><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">rf</span> <span class="o">*</span><span class="nx">Raft</span><span class="p">)</span> <span class="nf">replicate</span><span class="p">(</span><span class="nx">peerIndex</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">ctx</span> <span class="nx">context</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">  2</span><span class="cl">	<span class="nx">logMismatch</span> <span class="o">:=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="ln">  3</span><span class="cl">	<span class="k">for</span> <span class="p">!</span><span class="nx">rf</span><span class="p">.</span><span class="nf">killed</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">  4</span><span class="cl">		<span class="k">select</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">  5</span><span class="cl">		<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">ctx</span><span class="p">.</span><span class="nf">Done</span><span class="p">():</span>
+</span></span><span class="line"><span class="ln">  6</span><span class="cl">			<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer: %d]: Leader stepped down from leadership before initiating replicate.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">  7</span><span class="cl">			<span class="k">return</span>
+</span></span><span class="line"><span class="ln">  8</span><span class="cl">		<span class="k">default</span><span class="p">:</span>
+</span></span><span class="line"><span class="ln">  9</span><span class="cl">			<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 10</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 11</span><span class="cl">			<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">state</span> <span class="o">!=</span> <span class="nx">StateLeader</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 12</span><span class="cl">				<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer: %d]: Not a leader anymore, winding up my leadership setup.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 13</span><span class="cl">				<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">leaderCancelFunc</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 14</span><span class="cl">					<span class="nx">rf</span><span class="p">.</span><span class="nf">leaderCancelFunc</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 15</span><span class="cl">					<span class="nx">rf</span><span class="p">.</span><span class="nx">replicatorCond</span><span class="p">.</span><span class="nf">Broadcast</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 16</span><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 17</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 18</span><span class="cl">				<span class="k">return</span>
+</span></span><span class="line"><span class="ln"> 19</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 20</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 21</span><span class="cl">			<span class="c1">// Only waiting when:</span>
+</span></span><span class="line"><span class="ln"> 22</span><span class="cl">			<span class="c1">// - There is no log to send - In this case the wait will be signalled by the heartbeat</span>
+</span></span><span class="line"><span class="ln"> 23</span><span class="cl">			<span class="c1">// - We are in a continuous loop to find correct nextIndex for this peer with retrial RPCs</span>
+</span></span><span class="line"><span class="ln"> 24</span><span class="cl">			<span class="k">if</span> <span class="p">!</span><span class="nx">logMismatch</span> <span class="o">&amp;&amp;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">nextIndex</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span><span class="o">+</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 25</span><span class="cl">				<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer: %d]: Wating for next signal to replicate.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 26</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nx">replicatorCond</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 27</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 28</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 29</span><span class="cl">			<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nf">killed</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 30</span><span class="cl">				<span class="k">return</span>
+</span></span><span class="line"><span class="ln"> 31</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 32</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 33</span><span class="cl">			<span class="nx">reply</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">AppendEntriesReply</span><span class="p">{}</span>
+</span></span><span class="line"><span class="ln"> 34</span><span class="cl">			<span class="nx">logStartIndex</span> <span class="o">:=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">nextIndex</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">]</span>
+</span></span><span class="line"><span class="ln"> 35</span><span class="cl">			<span class="kd">var</span> <span class="nx">prevLogTerm</span> <span class="kt">int</span>
+</span></span><span class="line"><span class="ln"> 36</span><span class="cl">			<span class="nx">prevLogIndex</span> <span class="o">:=</span> <span class="nx">logStartIndex</span> <span class="o">-</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="ln"> 37</span><span class="cl">			<span class="nx">peer</span> <span class="o">:=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">peers</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">]</span>
+</span></span><span class="line"><span class="ln"> 38</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 39</span><span class="cl">			<span class="k">if</span> <span class="nx">prevLogIndex</span><span class="o">-</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 40</span><span class="cl">				<span class="nx">prevLogTerm</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">[</span><span class="nx">prevLogIndex</span><span class="o">-</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">].</span><span class="nx">Term</span>
+</span></span><span class="line"><span class="ln"> 41</span><span class="cl">			<span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="nx">prevLogIndex</span> <span class="o">==</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 42</span><span class="cl">				<span class="nx">prevLogTerm</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogTerm</span>
+</span></span><span class="line"><span class="ln"> 43</span><span class="cl">			<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 44</span><span class="cl">				<span class="c1">// prevLogIndex &lt; rf.snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln"> 45</span><span class="cl">				<span class="nx">prevLogTerm</span> <span class="p">=</span> <span class="o">-</span><span class="mi">1</span>
+</span></span><span class="line"><span class="ln"> 46</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 47</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 48</span><span class="cl">			<span class="k">if</span> <span class="nx">prevLogTerm</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 49</span><span class="cl">				<span class="nx">logMismatch</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="ln"> 50</span><span class="cl">				<span class="c1">// Leader does not have logs at `prevLogIndex` because of compaction</span>
+</span></span><span class="line"><span class="ln"> 51</span><span class="cl">				<span class="c1">// Leader needs to send snaphot to the peer as part of log repairing</span>
+</span></span><span class="line"><span class="ln"> 52</span><span class="cl">				<span class="nx">args</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">InstallSnapshotArgs</span><span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 53</span><span class="cl">					<span class="nx">Term</span><span class="p">:</span>              <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln"> 54</span><span class="cl">					<span class="nx">LeaderId</span><span class="p">:</span>          <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln"> 55</span><span class="cl">					<span class="nx">LastIncludedIndex</span><span class="p">:</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln"> 56</span><span class="cl">					<span class="nx">LastIncludedTerm</span><span class="p">:</span>  <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogTerm</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln"> 57</span><span class="cl">					<span class="nx">Data</span><span class="p">:</span>              <span class="nx">rf</span><span class="p">.</span><span class="nx">persister</span><span class="p">.</span><span class="nf">ReadSnapshot</span><span class="p">(),</span>
+</span></span><span class="line"><span class="ln"> 58</span><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 59</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 60</span><span class="cl">				<span class="nx">reply</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">InstallSnapshotReply</span><span class="p">{}</span>
+</span></span><span class="line"><span class="ln"> 61</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 62</span><span class="cl">				<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-install-snapshot: %d: peer: %d]: InstallSnapshot RPC with index: %d and term: %d sent.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LastIncludedIndex</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LastIncludedTerm</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 63</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 64</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 65</span><span class="cl">				<span class="nx">ok</span> <span class="o">:=</span> <span class="nx">rf</span><span class="p">.</span><span class="nf">sendRPCWithTimeout</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">peer</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="s">&#34;InstallSnapshot&#34;</span><span class="p">,</span> <span class="nx">args</span><span class="p">,</span> <span class="nx">reply</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 66</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 67</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 68</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 69</span><span class="cl">				<span class="k">if</span> <span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 70</span><span class="cl">					<span class="k">if</span> <span class="nx">reply</span><span class="p">.</span><span class="nx">Term</span> <span class="p">&gt;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 71</span><span class="cl">						<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-install-snapshot: %d: peer: %d]: Stepping down from leadership, Received InstallSnapshot reply from peer %d, with term %d &gt; %d - my term\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">reply</span><span class="p">.</span><span class="nx">Term</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 72</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 73</span><span class="cl">						<span class="nx">rf</span><span class="p">.</span><span class="nx">state</span> <span class="p">=</span> <span class="nx">StateFollower</span>
+</span></span><span class="line"><span class="ln"> 74</span><span class="cl">						<span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span> <span class="p">=</span> <span class="nx">reply</span><span class="p">.</span><span class="nx">Term</span>
+</span></span><span class="line"><span class="ln"> 75</span><span class="cl">						<span class="nx">rf</span><span class="p">.</span><span class="nx">lastContactFromLeader</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 76</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 77</span><span class="cl">						<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">leaderCancelFunc</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 78</span><span class="cl">							<span class="nx">rf</span><span class="p">.</span><span class="nf">leaderCancelFunc</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 79</span><span class="cl">							<span class="nx">rf</span><span class="p">.</span><span class="nx">replicatorCond</span><span class="p">.</span><span class="nf">Broadcast</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 80</span><span class="cl">						<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 81</span><span class="cl">						<span class="nx">rf</span><span class="p">.</span><span class="nf">persist</span><span class="p">(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 82</span><span class="cl">						<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 83</span><span class="cl">						<span class="k">return</span>
+</span></span><span class="line"><span class="ln"> 84</span><span class="cl">					<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 85</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 86</span><span class="cl">					<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-install-snapshot: %d: peer: %d]: Snapshot installed successfully\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 87</span><span class="cl">					<span class="nx">rf</span><span class="p">.</span><span class="nx">nextIndex</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">]</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="ln"> 88</span><span class="cl">					<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 89</span><span class="cl">					<span class="k">continue</span>
+</span></span><span class="line"><span class="ln"> 90</span><span class="cl">				<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 91</span><span class="cl">					<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-install-snapshot: %d: peer: %d]: Snapshot installtion failed!\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 92</span><span class="cl">					<span class="nx">rf</span><span class="p">.</span><span class="nx">nextIndex</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">]</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln"> 93</span><span class="cl">					<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 94</span><span class="cl">					<span class="k">continue</span>
+</span></span><span class="line"><span class="ln"> 95</span><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 96</span><span class="cl">			<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 97</span><span class="cl">				<span class="nx">replicateTerm</span> <span class="o">:=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span>
+</span></span><span class="line"><span class="ln"> 98</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 99</span><span class="cl">				<span class="nx">logEndIndex</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span> <span class="o">+</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln">100</span><span class="cl">				<span class="nx">nLogs</span> <span class="o">:=</span> <span class="nx">logEndIndex</span> <span class="o">-</span> <span class="nx">logStartIndex</span>
+</span></span><span class="line"><span class="ln">101</span><span class="cl">
+</span></span><span class="line"><span class="ln">102</span><span class="cl">				<span class="nx">args</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">AppendEntriesArgs</span><span class="p">{</span>
+</span></span><span class="line"><span class="ln">103</span><span class="cl">					<span class="nx">Term</span><span class="p">:</span>         <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln">104</span><span class="cl">					<span class="nx">LeaderId</span><span class="p">:</span>     <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln">105</span><span class="cl">					<span class="nx">PrevLogIndex</span><span class="p">:</span> <span class="nx">prevLogIndex</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln">106</span><span class="cl">					<span class="nx">PrevLogTerm</span><span class="p">:</span>  <span class="nx">prevLogTerm</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln">107</span><span class="cl">					<span class="nx">LeaderCommit</span><span class="p">:</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln">108</span><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="ln">109</span><span class="cl">
+</span></span><span class="line"><span class="ln">110</span><span class="cl">				<span class="k">if</span> <span class="nx">nLogs</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">111</span><span class="cl">					<span class="nx">entriesToSend</span> <span class="o">:=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">[</span><span class="nx">logStartIndex</span><span class="o">-</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">:]</span>
+</span></span><span class="line"><span class="ln">112</span><span class="cl">					<span class="nx">args</span><span class="p">.</span><span class="nx">Entries</span> <span class="p">=</span> <span class="nb">make</span><span class="p">([]</span><span class="nx">LogEntry</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">entriesToSend</span><span class="p">))</span>
+</span></span><span class="line"><span class="ln">113</span><span class="cl">					<span class="nb">copy</span><span class="p">(</span><span class="nx">args</span><span class="p">.</span><span class="nx">Entries</span><span class="p">,</span> <span class="nx">entriesToSend</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">114</span><span class="cl">					<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer: %d]: Sending AppendEntries RPC in term %d with log index range [%d, %d).\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">replicateTerm</span><span class="p">,</span> <span class="nx">logStartIndex</span><span class="p">,</span> <span class="nx">logEndIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">115</span><span class="cl">				<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">116</span><span class="cl">					<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer: %d]: Sending AppendEntries Heartbeat RPC for term %d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">replicateTerm</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">117</span><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="ln">118</span><span class="cl">
+</span></span><span class="line"><span class="ln">119</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">120</span><span class="cl">				<span class="nx">ok</span> <span class="o">:=</span> <span class="nx">rf</span><span class="p">.</span><span class="nf">sendRPCWithTimeout</span><span class="p">(</span><span class="nx">ctx</span><span class="p">,</span> <span class="nx">peer</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="s">&#34;AppendEntries&#34;</span><span class="p">,</span> <span class="nx">args</span><span class="p">,</span> <span class="nx">reply</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">121</span><span class="cl">
+</span></span><span class="line"><span class="ln">122</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">123</span><span class="cl">
+</span></span><span class="line"><span class="ln">124</span><span class="cl">				<span class="k">if</span> <span class="nx">ok</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">125</span><span class="cl">					<span class="k">select</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">126</span><span class="cl">					<span class="k">case</span> <span class="o">&lt;-</span><span class="nx">ctx</span><span class="p">.</span><span class="nf">Done</span><span class="p">():</span>
+</span></span><span class="line"><span class="ln">127</span><span class="cl">						<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer: %d]: Leader stepped down from leadership after sending AppendEntries RPC.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">128</span><span class="cl">						<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">129</span><span class="cl">						<span class="k">return</span>
+</span></span><span class="line"><span class="ln">130</span><span class="cl">					<span class="k">default</span><span class="p">:</span>
+</span></span><span class="line"><span class="ln">131</span><span class="cl">						<span class="c1">// Check fot change in state during the RPC call</span>
+</span></span><span class="line"><span class="ln">132</span><span class="cl">						<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span> <span class="o">!=</span> <span class="nx">replicateTerm</span> <span class="o">||</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">state</span> <span class="o">!=</span> <span class="nx">StateLeader</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">133</span><span class="cl">							<span class="c1">// Leader already stepped down</span>
+</span></span><span class="line"><span class="ln">134</span><span class="cl">							<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer: %d]: Checked ladership state after getting AppendEntries Reply, Not a leader anymore, Winding up my leadership setup.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">135</span><span class="cl">							<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">leaderCancelFunc</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">136</span><span class="cl">								<span class="nx">rf</span><span class="p">.</span><span class="nf">leaderCancelFunc</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">137</span><span class="cl">								<span class="nx">rf</span><span class="p">.</span><span class="nx">replicatorCond</span><span class="p">.</span><span class="nf">Broadcast</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">138</span><span class="cl">							<span class="p">}</span>
+</span></span><span class="line"><span class="ln">139</span><span class="cl">							<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">140</span><span class="cl">							<span class="k">return</span>
+</span></span><span class="line"><span class="ln">141</span><span class="cl">						<span class="p">}</span>
+</span></span><span class="line"><span class="ln">142</span><span class="cl">
+</span></span><span class="line"><span class="ln">143</span><span class="cl">						<span class="c1">// Handle Heartbeat response</span>
+</span></span><span class="line"><span class="ln">144</span><span class="cl">						<span class="k">if</span> <span class="p">!</span><span class="nx">reply</span><span class="p">.</span><span class="nx">Success</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">145</span><span class="cl">							<span class="k">if</span> <span class="nx">reply</span><span class="p">.</span><span class="nx">Term</span> <span class="p">&gt;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">146</span><span class="cl">								<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d: peer: %d]: Stepping down from leadership, Received ApppendEntries reply from peer %d, with term %d &gt; %d - my term\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">reply</span><span class="p">.</span><span class="nx">Term</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">147</span><span class="cl">
+</span></span><span class="line"><span class="ln">148</span><span class="cl">								<span class="nx">rf</span><span class="p">.</span><span class="nx">state</span> <span class="p">=</span> <span class="nx">StateFollower</span>
+</span></span><span class="line"><span class="ln">149</span><span class="cl">								<span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span> <span class="p">=</span> <span class="nx">reply</span><span class="p">.</span><span class="nx">Term</span>
+</span></span><span class="line"><span class="ln">150</span><span class="cl">								<span class="nx">rf</span><span class="p">.</span><span class="nx">lastContactFromLeader</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">151</span><span class="cl">
+</span></span><span class="line"><span class="ln">152</span><span class="cl">								<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">leaderCancelFunc</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">153</span><span class="cl">									<span class="nx">rf</span><span class="p">.</span><span class="nf">leaderCancelFunc</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">154</span><span class="cl">									<span class="nx">rf</span><span class="p">.</span><span class="nx">replicatorCond</span><span class="p">.</span><span class="nf">Broadcast</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">155</span><span class="cl">								<span class="p">}</span>
+</span></span><span class="line"><span class="ln">156</span><span class="cl">								<span class="nx">rf</span><span class="p">.</span><span class="nf">persist</span><span class="p">(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">157</span><span class="cl">								<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">158</span><span class="cl">								<span class="k">return</span>
+</span></span><span class="line"><span class="ln">159</span><span class="cl">							<span class="p">}</span>
+</span></span><span class="line"><span class="ln">160</span><span class="cl">
+</span></span><span class="line"><span class="ln">161</span><span class="cl">							<span class="c1">// Follower rejected the AppendEntries RPC beacuse of log conflict</span>
+</span></span><span class="line"><span class="ln">162</span><span class="cl">							<span class="c1">// Update the nextIndex for this follower</span>
+</span></span><span class="line"><span class="ln">163</span><span class="cl">							<span class="nx">logMismatch</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="ln">164</span><span class="cl">							<span class="nx">followersConflictTermPresent</span> <span class="o">:=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="ln">165</span><span class="cl">							<span class="k">if</span> <span class="nx">reply</span><span class="p">.</span><span class="nx">ConflictTerm</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">166</span><span class="cl">								<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="nx">prevLogIndex</span> <span class="o">-</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span><span class="o">--</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">167</span><span class="cl">									<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">Term</span> <span class="o">==</span> <span class="nx">reply</span><span class="p">.</span><span class="nx">ConflictTerm</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">168</span><span class="cl">										<span class="nx">rf</span><span class="p">.</span><span class="nx">nextIndex</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">]</span> <span class="p">=</span> <span class="nx">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">+</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln">169</span><span class="cl">										<span class="nx">followersConflictTermPresent</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="ln">170</span><span class="cl">										<span class="k">break</span>
+</span></span><span class="line"><span class="ln">171</span><span class="cl">									<span class="p">}</span>
+</span></span><span class="line"><span class="ln">172</span><span class="cl">
+</span></span><span class="line"><span class="ln">173</span><span class="cl">								<span class="p">}</span>
+</span></span><span class="line"><span class="ln">174</span><span class="cl">
+</span></span><span class="line"><span class="ln">175</span><span class="cl">								<span class="k">if</span> <span class="p">!</span><span class="nx">followersConflictTermPresent</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">176</span><span class="cl">									<span class="nx">rf</span><span class="p">.</span><span class="nx">nextIndex</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">]</span> <span class="p">=</span> <span class="nx">reply</span><span class="p">.</span><span class="nx">ConflictIndex</span>
+</span></span><span class="line"><span class="ln">177</span><span class="cl">								<span class="p">}</span>
+</span></span><span class="line"><span class="ln">178</span><span class="cl">							<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">179</span><span class="cl">								<span class="nx">rf</span><span class="p">.</span><span class="nx">nextIndex</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">]</span> <span class="p">=</span> <span class="nx">reply</span><span class="p">.</span><span class="nx">ConflictIndex</span>
+</span></span><span class="line"><span class="ln">180</span><span class="cl">							<span class="p">}</span>
+</span></span><span class="line"><span class="ln">181</span><span class="cl">							<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer: %d]: Logmismatch - AppendEntries RPC with previous log index %d of previous log term %d failed. Retrying with log index:%d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">prevLogIndex</span><span class="p">,</span> <span class="nx">prevLogTerm</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">nextIndex</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">])</span>
+</span></span><span class="line"><span class="ln">182</span><span class="cl">							<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">183</span><span class="cl">							<span class="k">continue</span>
+</span></span><span class="line"><span class="ln">184</span><span class="cl">						<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">185</span><span class="cl">							<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer: %d]: responded success to AppendEntries RPC in term %d with log index range [%d, %d).\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">replicateTerm</span><span class="p">,</span> <span class="nx">logStartIndex</span><span class="p">,</span> <span class="nx">logEndIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">186</span><span class="cl">							<span class="nx">logMismatch</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="ln">187</span><span class="cl">
+</span></span><span class="line"><span class="ln">188</span><span class="cl">							<span class="k">if</span> <span class="nx">nLogs</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">189</span><span class="cl">								<span class="c1">// Log replication successful</span>
+</span></span><span class="line"><span class="ln">190</span><span class="cl">								<span class="nx">rf</span><span class="p">.</span><span class="nx">nextIndex</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">]</span> <span class="p">=</span> <span class="nx">prevLogIndex</span> <span class="o">+</span> <span class="nx">nLogs</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="ln">191</span><span class="cl">								<span class="nx">rf</span><span class="p">.</span><span class="nx">matchIndex</span><span class="p">[</span><span class="nx">peerIndex</span><span class="p">]</span> <span class="p">=</span> <span class="nx">prevLogIndex</span> <span class="o">+</span> <span class="nx">nLogs</span>
+</span></span><span class="line"><span class="ln">192</span><span class="cl">
+</span></span><span class="line"><span class="ln">193</span><span class="cl">								<span class="c1">// Need to track majority replication upto latest log index</span>
+</span></span><span class="line"><span class="ln">194</span><span class="cl">								<span class="c1">// - So that we can update commitIndex</span>
+</span></span><span class="line"><span class="ln">195</span><span class="cl">								<span class="c1">// - Apply logs upto commitIndex</span>
+</span></span><span class="line"><span class="ln">196</span><span class="cl">								<span class="c1">// Just an idea - maybe this needs to be done separately in a goroutine</span>
+</span></span><span class="line"><span class="ln">197</span><span class="cl">								<span class="c1">// Where we continuosly check lastApplied and commitIndex</span>
+</span></span><span class="line"><span class="ln">198</span><span class="cl">								<span class="c1">// Apply and lastApplied to commit index and if leader send the response to apply channel</span>
+</span></span><span class="line"><span class="ln">199</span><span class="cl">								<span class="nx">majority</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">peers</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="ln">200</span><span class="cl">
+</span></span><span class="line"><span class="ln">201</span><span class="cl">								<span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&gt;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span><span class="o">-</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">;</span> <span class="nx">i</span><span class="o">--</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">202</span><span class="cl">									<span class="nx">matchedPeerCount</span> <span class="o">:=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="ln">203</span><span class="cl">									<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">Term</span> <span class="o">==</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">204</span><span class="cl">										<span class="k">for</span> <span class="nx">pi</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">peers</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">205</span><span class="cl">											<span class="k">if</span> <span class="nx">pi</span> <span class="o">!=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span> <span class="o">&amp;&amp;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">matchIndex</span><span class="p">[</span><span class="nx">pi</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="nx">i</span><span class="o">+</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">206</span><span class="cl">												<span class="nx">matchedPeerCount</span><span class="o">++</span>
+</span></span><span class="line"><span class="ln">207</span><span class="cl">											<span class="p">}</span>
+</span></span><span class="line"><span class="ln">208</span><span class="cl">										<span class="p">}</span>
+</span></span><span class="line"><span class="ln">209</span><span class="cl">									<span class="p">}</span>
+</span></span><span class="line"><span class="ln">210</span><span class="cl">
+</span></span><span class="line"><span class="ln">211</span><span class="cl">									<span class="c1">// Largest possible log index greater the commitIndex replicated at majority of peers</span>
+</span></span><span class="line"><span class="ln">212</span><span class="cl">									<span class="c1">// update commitIndex</span>
+</span></span><span class="line"><span class="ln">213</span><span class="cl">									<span class="k">if</span> <span class="nx">matchedPeerCount</span> <span class="o">&gt;=</span> <span class="nx">majority</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">214</span><span class="cl">										<span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span> <span class="p">=</span> <span class="nx">i</span> <span class="o">+</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln">215</span><span class="cl">
+</span></span><span class="line"><span class="ln">216</span><span class="cl">										<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer: %d]: Log index %d replicated to majority of peers.(%d/%d peers), updating commitIndex to : %d, current lastApplied value: %d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">i</span><span class="o">+</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">,</span> <span class="nx">matchedPeerCount</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">peers</span><span class="p">),</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">lastApplied</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">217</span><span class="cl">										<span class="nx">rf</span><span class="p">.</span><span class="nx">applyCond</span><span class="p">.</span><span class="nf">Signal</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">218</span><span class="cl">										<span class="k">break</span>
+</span></span><span class="line"><span class="ln">219</span><span class="cl">									<span class="p">}</span>
+</span></span><span class="line"><span class="ln">220</span><span class="cl">								<span class="p">}</span>
+</span></span><span class="line"><span class="ln">221</span><span class="cl">							<span class="p">}</span>
+</span></span><span class="line"><span class="ln">222</span><span class="cl">
+</span></span><span class="line"><span class="ln">223</span><span class="cl">							<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">224</span><span class="cl">							<span class="k">continue</span>
+</span></span><span class="line"><span class="ln">225</span><span class="cl">						<span class="p">}</span>
+</span></span><span class="line"><span class="ln">226</span><span class="cl">					<span class="p">}</span>
+</span></span><span class="line"><span class="ln">227</span><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="ln">228</span><span class="cl">				<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer %d]: Sending AppendEntries RPC at leader&#39;s term: %d, failed. Payload prevLogIndex: %d | prevLogTerm: %d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">replicateTerm</span><span class="p">,</span> <span class="nx">prevLogIndex</span><span class="p">,</span> <span class="nx">prevLogTerm</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">229</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">230</span><span class="cl">				<span class="k">continue</span>
+</span></span><span class="line"><span class="ln">231</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln">232</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln">233</span><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="ln">234</span><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>The <code>replicate</code> function operates in a continuous loop. Inside this loop, a <code>select</code> statement monitors the leader&rsquo;s context (<code>ctx</code>) status. If <code>ctx.Done()</code> is not yet closed, it confirms the current server is still the leader. To ensure correctness, the server&rsquo;s current state is also checked to be <code>StateLeader</code>. If it&rsquo;s not, <code>rf.leaderCanelFunc</code> is explicitly called to relinquish leadership, which closes the context&rsquo;s done channel, signalling the leader&rsquo;s relinquishment to other components. Additionally, the loop waits on <code>rf.replicatorCond</code> when there are no more logs to transmit and no log mismatch between the leader&rsquo;s and the peer&rsquo;s logs.
+As mentioned in <a href="/blogs/building-fault-tolerant-kv-storage-system---part-1/">Part 1 of this blog series</a>, servers periodically compact their logs to manage their size. This involves taking a snapshot of the current state and then truncating the log up to that point. If a follower&rsquo;s log is significantly behind the leader&rsquo;s and the leader has already truncated its log, the leader may need to send a snapshot using the <code>InstallSnapshot</code> RPC. We will delve deeper into log compaction in a later part of this series.
+Leader maintains volatile state for each peer <code>nextIndex</code> and <code>matchIndex</code>, these two properties for each peer are maintained by the leader, and it tells the leader which next log index to send to the peer and index up to which logs are replicated for that peer respectively.</p>
+<h3 id="heartbeat-rules">Heartbeat rules<a hidden class="anchor" aria-hidden="true" href="#heartbeat-rules">#</a></h3>
+<p>The <code>AppendEntries</code> RPC also functions as a heartbeat, allowing the leader to communicate its identity and log status to all followers. A follower only accepts this RPC if:</p>
+<ul>
+<li>The leader&rsquo;s <code>Term</code> value is greater than or equal to the follower&rsquo;s current term. If not, the follower rejects the RPC, signalling that the sender (mistakenly believing itself to be the leader) is outdated. The follower sends its own <code>reply.Term</code> to indicate this. Upon receiving a <code>Term</code> in the reply that is higher than its own, the leader relinquishes leadership.</li>
+<li>The leader includes <code>PrevLogIndex</code> and <code>PrevLogTerm</code> with each <code>AppendEntries</code> RPC. These values are vital, as they indicate the leader&rsquo;s log state by specifying the index and term of the log up to which the leader believes the follower&rsquo;s log matches. If there is a discrepancy, the follower responds with <code>reply.Success</code> set to false, indicating a log mismatch. The leader then decreases <code>nextIndex[peerIndex]</code> for that peer and sends another heartbeat with an earlier log index. This process continues until a matching log index is found. At that point, the follower accepts the leader&rsquo;s <code>AppendEntries</code> RPC and uses the <code>reconcileLogs</code> function to remove conflicting log entries and replace them with the log range sent by the leader from <code>[PrevLogIndex + 1, LatestLogIndexAtLeader]</code>. extracted from <code>args,Entries</code> field.
+This RAFT property is followed by each index of the follower, so if the current index and term match with the leader, so does the log index previous to this one, or else a conflict would have occurred previously itself. <strong>So this single property ensures that the log state matches between leader and follower up to the latest index;</strong> otherwise, the follower will not accept the heartbeat or normal <code>AppendEntries</code> RPC with log entries, <em>and the to-and-fro of heartbeats after that to find the non-conflict index at the follower is called the log correction process.</em> Later on, we will see how we can optimise this log correction because currently the leader needs to try for each log index in decreasing order, which can take a lot of time if the follower has been stale for a long time and during that time the leader&rsquo;s log has grown a lot.</li>
+</ul>
+<p>![[Pasted image 20251005180921.png]]
+The image above, shows a simple successful log replication situation. Here, Follower 1 and Follower 2 have the same initial part of the log as the leader. Also, the leader knows exactly which parts of the log need to be sent to each follower.</p>
+<p>In the <code>replicate</code> method, we use a <code>logMismatch</code> flag within the replication loop. This flag shows if there was a log problem when sending the <code>AppendEntries</code> RPC in the last loop. If there was a problem, we don&rsquo;t wait (we don&rsquo;t call <code>rf.replicatorCond.Wait()</code>, which releases the lock and puts the thread to sleep). This is because, if there&rsquo;s a log problem, we want to fix the log quickly, so we send the next <code>AppendEntries</code> RPC right away with the updated previous log index and term.
+If the previous log index is less than the index up to which we&rsquo;ve taken a snapshot of the state and shortened the log, we send an <code>InstallSnapshot</code> RPC to send the snapshot to the follower instead, since we don&rsquo;t have the needed logs. We&rsquo;ll discuss snapshots and log compaction more later.
+We still follow one rule closely: if we get an RPC reply with a term value higher than the leader&rsquo;s current term, the leader gives up leadership by cancelling the context. See the <a href="/blogs/building-fault-tolerant-kv-storage-system---part-1/">previous part</a> for more information.
+![[Pasted image 20251005233402.png]]
+In the image, follower 1&rsquo;s <code>nextIndex</code> is at index <code>7</code>. When an <code>AppendEntries</code> RPC is sent with <code>prevLogIndex=6</code> and <code>prevLogTerm=2</code>, the follower detects a log mismatch and rejects the RPC. Because the follower&rsquo;s term is also <code>2</code>, the leader keeps its leadership role and immediately reduces its <code>nextIndex</code> for follower 1 to <code>6</code>. It then sends another <code>AppendEntries</code> RPC (without waiting due to <code>logMismatch=true</code>) with <code>prevLogIndex=5</code> and <code>prevLogTerm=2</code>. This second RPC is accepted. The leader sends <code>Entries=[1, 2]</code>, causing the entries after index 5 to be replaced by these new entries (handled by ). <strong>Thus, the leader can erase uncommitted entries from the follower during log correction.</strong>
+Follower 2 accepts the initial <code>AppendEntries</code> RPC because there is no conflict. <strong>Since The leader manages each peer in its own separate goroutine</strong>, After each successful RPC response, the leader checks if a majority (replication factor) has replicated the log up to a specific index. In this scenario, once follower 2 responds (likely before follower 1, which is still correcting its log), the leader will have replicated log <code>index 7 on 2/3</code> of the peers (including itself).</p>
+<p>The leader then updates its <code>commitIndex</code> and signals a condition variable called <code>rf.applyCond</code>. First, we will examine how the follower handles the <code>AppendEntries</code> RPC.  Then, building on this understanding, we will discuss <code>commitIndex</code>, <code>lastApplied</code>, and<code> rf.applyCond</code>, explaining how they ensure log entries are committed, what &ldquo;committed&rdquo; means, what &ldquo;applying&rdquo; a log means, and how it is handled.&quot;</p>
+<h3 id="handling-appendentries-rpc">Handling <code>AppendEntries</code> RPC<a hidden class="anchor" aria-hidden="true" href="#handling-appendentries-rpc">#</a></h3>
+<p>Lets now look at how a <code>Follower</code> handles an <code>AppendEntries</code> RPC from a leader, we will revisit leader&rsquo;s <code>replicate</code> method when we get to how logs are committed and applied to the state machine by the leader and how this change is propagated to followers.
+Given below is the implementation of <code>AppendEntries</code> RPC:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="ln">  1</span><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">rf</span> <span class="o">*</span><span class="nx">Raft</span><span class="p">)</span> <span class="nf">AppendEntries</span><span class="p">(</span><span class="nx">args</span> <span class="o">*</span><span class="nx">AppendEntriesArgs</span><span class="p">,</span> <span class="nx">reply</span> <span class="o">*</span><span class="nx">AppendEntriesReply</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">  2</span><span class="cl">	<span class="c1">// Handling heart beats from leader</span>
+</span></span><span class="line"><span class="ln">  3</span><span class="cl">	<span class="c1">// When follower recieves heartbeat it should check for heartbeat validity</span>
+</span></span><span class="line"><span class="ln">  4</span><span class="cl">
+</span></span><span class="line"><span class="ln">  5</span><span class="cl">	<span class="c1">// [Case: 1] if args.Term &lt; rf.currentTerm then it means this follower is either a new leader</span>
+</span></span><span class="line"><span class="ln">  6</span><span class="cl">	<span class="c1">// OR it voted for someone else after least heartbeat.</span>
+</span></span><span class="line"><span class="ln">  7</span><span class="cl">	<span class="c1">// In such case follower should return reply.Success = false indicating it does not acknowledge the sender</span>
+</span></span><span class="line"><span class="ln">  8</span><span class="cl">	<span class="c1">// as leader anymore and should set reply.Term = rf.currentTerm. (This indicated sender to step down from leadership)</span>
+</span></span><span class="line"><span class="ln">  9</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 10</span><span class="cl">	<span class="c1">// [Case: 2] if args.Term &gt;= rf.currentTerm the the current follower/candidate becomes follower again accepting current leader</span>
+</span></span><span class="line"><span class="ln"> 11</span><span class="cl">	<span class="c1">// In such case rf.currentTerm = args.Term and reply.Success = true with reply.Term = rf.currentTerm (same term as the sender)</span>
+</span></span><span class="line"><span class="ln"> 12</span><span class="cl">	<span class="c1">// In Case 2 we should reset the election timer since we have received the heartbeat from a genuine leader</span>
+</span></span><span class="line"><span class="ln"> 13</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 14</span><span class="cl">	<span class="c1">// In Case 1 since the previous leader is now left behind, there are 3 possibilities:</span>
+</span></span><span class="line"><span class="ln"> 15</span><span class="cl">	<span class="c1">// 		A. The current peer is a candidate now and an election was already started by it or even finished with it being the current leader</span>
+</span></span><span class="line"><span class="ln"> 16</span><span class="cl">	<span class="c1">// 		B. Some other peer is now a candidate with an election going on OR is a leader now</span>
+</span></span><span class="line"><span class="ln"> 17</span><span class="cl">	<span class="c1">// 		C. No election has taken place till now</span>
+</span></span><span class="line"><span class="ln"> 18</span><span class="cl">	<span class="c1">// In all the above cases we should not interrupt the election timeout or anything else</span>
+</span></span><span class="line"><span class="ln"> 19</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 20</span><span class="cl">	<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 21</span><span class="cl">	<span class="k">defer</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 22</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 23</span><span class="cl">	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">args</span><span class="p">.</span><span class="nx">Entries</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 24</span><span class="cl">		<span class="c1">// Heartbeat</span>
+</span></span><span class="line"><span class="ln"> 25</span><span class="cl">		<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[Peer: %d]: Recieved AppendEntries RPC as heartbeat from leader %d for term %d with commitIndex %d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderId</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Term</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderCommit</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 26</span><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 27</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 28</span><span class="cl">	<span class="k">if</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Term</span> <span class="p">&lt;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 29</span><span class="cl">		<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[Peer: %d]: AppendEntries RPC from leader %d for term %d not acknowledged, Leader&#39;s term: %d is older than my current term: %d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderId</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Term</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Term</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 30</span><span class="cl">		<span class="nx">reply</span><span class="p">.</span><span class="nx">Success</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="ln"> 31</span><span class="cl">		<span class="nx">reply</span><span class="p">.</span><span class="nx">Term</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span>
+</span></span><span class="line"><span class="ln"> 32</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 33</span><span class="cl">		<span class="k">return</span>
+</span></span><span class="line"><span class="ln"> 34</span><span class="cl">	<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 35</span><span class="cl">		<span class="c1">// Sent by current leader</span>
+</span></span><span class="line"><span class="ln"> 36</span><span class="cl">		<span class="c1">// Reset election timeout</span>
+</span></span><span class="line"><span class="ln"> 37</span><span class="cl">		<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">state</span> <span class="o">==</span> <span class="nx">StateLeader</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 38</span><span class="cl">			<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[Peer: %d]: AppendEntries RPC recieved from current leader: %d, winding up my leadership setup.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderId</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 39</span><span class="cl">			<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">leaderCancelFunc</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 40</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nf">leaderCancelFunc</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 41</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nx">replicatorCond</span><span class="p">.</span><span class="nf">Broadcast</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 42</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 43</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 44</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 45</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">lastContactFromLeader</span> <span class="p">=</span> <span class="nx">time</span><span class="p">.</span><span class="nf">Now</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 46</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 47</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span> <span class="p">=</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Term</span>
+</span></span><span class="line"><span class="ln"> 48</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">state</span> <span class="p">=</span> <span class="nx">StateFollower</span>
+</span></span><span class="line"><span class="ln"> 49</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 50</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nf">persist</span><span class="p">(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 51</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 52</span><span class="cl">		<span class="nx">latestLogIndex</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="ln"> 53</span><span class="cl">		<span class="nx">logTerm</span> <span class="o">:=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="ln"> 54</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 55</span><span class="cl">		<span class="k">if</span> <span class="nx">args</span><span class="p">.</span><span class="nx">PrevLogIndex</span> <span class="p">&gt;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="o">&amp;&amp;</span> <span class="nx">args</span><span class="p">.</span><span class="nx">PrevLogIndex</span> <span class="o">&lt;=</span> <span class="nx">latestLogIndex</span><span class="o">+</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 56</span><span class="cl">			<span class="nx">logTerm</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">[</span><span class="nx">args</span><span class="p">.</span><span class="nx">PrevLogIndex</span><span class="o">-</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">].</span><span class="nx">Term</span>
+</span></span><span class="line"><span class="ln"> 57</span><span class="cl">		<span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="nx">args</span><span class="p">.</span><span class="nx">PrevLogIndex</span> <span class="o">==</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 58</span><span class="cl">			<span class="nx">logTerm</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogTerm</span>
+</span></span><span class="line"><span class="ln"> 59</span><span class="cl">		<span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="nx">args</span><span class="p">.</span><span class="nx">PrevLogIndex</span> <span class="p">&lt;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 60</span><span class="cl">			<span class="c1">// This should trigger InstallSnapshot from leader</span>
+</span></span><span class="line"><span class="ln"> 61</span><span class="cl">			<span class="nx">reply</span><span class="p">.</span><span class="nx">ConflictIndex</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="ln"> 62</span><span class="cl">			<span class="nx">reply</span><span class="p">.</span><span class="nx">ConflictTerm</span> <span class="p">=</span> <span class="o">-</span><span class="mi">1</span>
+</span></span><span class="line"><span class="ln"> 63</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 64</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 65</span><span class="cl">		<span class="k">if</span> <span class="nx">logTerm</span> <span class="o">!=</span> <span class="nx">args</span><span class="p">.</span><span class="nx">PrevLogTerm</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 66</span><span class="cl">			<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[Peer: %d]: AppendEntries RPC from leader %d for term %d not acknowledged. Log terms do not match, (Leader term, Leader index): (%d, %d), peer&#39;s term for same log index: %d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderId</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Term</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">PrevLogTerm</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">PrevLogIndex</span><span class="p">,</span> <span class="nx">logTerm</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 67</span><span class="cl">			<span class="nx">reply</span><span class="p">.</span><span class="nx">Success</span> <span class="p">=</span> <span class="kc">false</span>
+</span></span><span class="line"><span class="ln"> 68</span><span class="cl">			<span class="nx">reply</span><span class="p">.</span><span class="nx">Term</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span>
+</span></span><span class="line"><span class="ln"> 69</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 70</span><span class="cl">			<span class="k">if</span> <span class="nx">args</span><span class="p">.</span><span class="nx">PrevLogIndex</span> <span class="o">&lt;=</span> <span class="nx">latestLogIndex</span><span class="o">+</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 71</span><span class="cl">				<span class="nx">reply</span><span class="p">.</span><span class="nx">ConflictTerm</span> <span class="p">=</span> <span class="nx">logTerm</span>
+</span></span><span class="line"><span class="ln"> 72</span><span class="cl">				<span class="nx">i</span> <span class="o">:=</span> <span class="nx">args</span><span class="p">.</span><span class="nx">PrevLogIndex</span> <span class="o">-</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln"> 73</span><span class="cl">				<span class="c1">// Find fist index of `logTerm` in follower&#39;s log</span>
+</span></span><span class="line"><span class="ln"> 74</span><span class="cl">				<span class="k">for</span> <span class="p">;</span> <span class="nx">i</span> <span class="p">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span><span class="o">--</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 75</span><span class="cl">					<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">Term</span> <span class="o">!=</span> <span class="nx">logTerm</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 76</span><span class="cl">						<span class="k">break</span>
+</span></span><span class="line"><span class="ln"> 77</span><span class="cl">					<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 78</span><span class="cl">				<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 79</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 80</span><span class="cl">				<span class="nx">reply</span><span class="p">.</span><span class="nx">ConflictIndex</span> <span class="p">=</span> <span class="nx">i</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">+</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln"> 81</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 82</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 83</span><span class="cl">			<span class="k">return</span>
+</span></span><span class="line"><span class="ln"> 84</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 85</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 86</span><span class="cl">		<span class="nx">reply</span><span class="p">.</span><span class="nx">Success</span> <span class="p">=</span> <span class="kc">true</span>
+</span></span><span class="line"><span class="ln"> 87</span><span class="cl">		<span class="nx">reply</span><span class="p">.</span><span class="nx">Term</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span>
+</span></span><span class="line"><span class="ln"> 88</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 89</span><span class="cl">		<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[Peer: %d]: AppendEntries RPC from leader %d for term %d acknowledged.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderId</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">Term</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 90</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 91</span><span class="cl">		<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nx">args</span><span class="p">.</span><span class="nx">Entries</span><span class="p">)</span> <span class="p">&gt;</span> <span class="mi">0</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 92</span><span class="cl">			<span class="nx">rf</span><span class="p">.</span><span class="nf">reconcileLogs</span><span class="p">(</span><span class="nx">args</span><span class="p">.</span><span class="nx">Entries</span><span class="p">,</span> <span class="nx">args</span><span class="p">.</span><span class="nx">PrevLogIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 93</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 94</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 95</span><span class="cl">		<span class="k">if</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderCommit</span> <span class="p">&gt;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 96</span><span class="cl">			<span class="c1">// If leaderCommit &gt; commitIndex, set commitIndex =</span>
+</span></span><span class="line"><span class="ln"> 97</span><span class="cl">			<span class="c1">// min(leaderCommit, index of last new entry)</span>
+</span></span><span class="line"><span class="ln"> 98</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 99</span><span class="cl">			<span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span> <span class="p">=</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderCommit</span>
+</span></span><span class="line"><span class="ln">100</span><span class="cl">
+</span></span><span class="line"><span class="ln">101</span><span class="cl">			<span class="k">if</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderCommit</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span><span class="o">+</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">102</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span> <span class="p">=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln">103</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln">104</span><span class="cl">
+</span></span><span class="line"><span class="ln">105</span><span class="cl">			<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[Peer: %d]: Updated commmit index to %d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">106</span><span class="cl">
+</span></span><span class="line"><span class="ln">107</span><span class="cl">			<span class="nx">rf</span><span class="p">.</span><span class="nx">applyCond</span><span class="p">.</span><span class="nf">Signal</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">108</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln">109</span><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="ln">110</span><span class="cl">
+</span></span><span class="line"><span class="ln">111</span><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>Like other Remote Procedure Calls, we initially verify if the sender&rsquo;s <code>args.Term</code> is lower than the recipient&rsquo;s term. If it is, we reject the call, notifying the sending leader that its leadership is outdated and the cluster&rsquo;s <code>term</code> has advanced since it was last the leader. We include the term value in the response, prompting the sender to relinquish leadership and begin synchronizing. As mentioned before, this synchronization occurs when the peer receives a heartbeat from the current leader, initiating any necessary log corrections. This demonstrates that log flow consistently originates from the current leader to all other followers.
+The same principle applies if the receiving peer believes itself to be the leader of a term less than or equal to the term in the <code>AppendEntries</code> RPC. In this scenario, we acknowledge the sender as the rightful current leader and invoke <code>rf.leaderCancelFunc()</code> to force the current peer to step down from leadership. Additionally, we broadcast on <code>rf.replicatorCond</code> to ensure that all peer-specific replication threads spawned by this receiver recognize the effect of the cancelled context as quickly as possible.
+After confirming the leader&rsquo;s identity, we begin by updating the <code>lastContactFromLeader</code> timestamp. Each follower has a <code>ticker</code> that verifies if the last communication from the leader exceeded a set threshold (the election timeout). If it does, the follower can become a candidate and initiate an election. Updating the timestamp prevents unnecessary elections. More information about leader election can be found in the <a href="/blogs/building-fault-tolerant-kv-storage-system---part-1/">preceding section</a>.
+After this We move on to verifying <strong>log consistency</strong>. This is done using the <code>PrevLogIndex</code> and <code>PrevLogTerm</code> fields of the <code>AppendEntries</code> RPC.
+The follower checks if it has a log entry at <code>PrevLogIndex</code> and whether that entry’s term matches <code>PrevLogTerm</code>. If either of these checks fail, it indicates that the follower’s log has diverged from the leader’s. In such cases, the follower rejects the RPC by returning <code>Success = false</code>. This rejection signals to the leader that it needs to adjust its <code>nextIndex</code> for this follower and retry from an earlier point in its log, Effectively “backing up” until it finds the last matching entry.
+Now, without any optimization, this correction process could be quite inefficient: the leader would decrement <code>nextIndex[peer]</code> one step at a time and re-send the RPC repeatedly until it finds a match. If the follower has fallen far behind (say, by <em>N</em> entries), this would take <em>N</em> separate RPCs:  a linear-time process that can become costly in large logs.
+To avoid that, Raft introduces a <strong>log inconsistency optimization</strong>. Instead of merely rejecting the RPC, the follower includes two additional fields in its response: <code>ConflictTerm</code> and <code>ConflictIndex</code>. These tell the leader the term of the conflicting entry and the first index where that term begins.
+With this information, the leader can skip behind intelligently. It looks for the last entry in its own log with the same <code>ConflictTerm</code>.</p>
+<ul>
+<li>If it finds one, it sets the follower’s <code>nextIndex</code> to just after that entry: meaning it assumes both logs agree up to that point, This assumption may fail when the <code>AppendEntries</code> is again rejected with backed up <code>nextIndex</code> value which means the followers log are lagging behind leader&rsquo;s term at that index, so leader will repeat this process again with new <code>ConflictIndex</code> and <code>ConflictTerm</code></li>
+<li>If it doesn’t find any entry with that term, it sets <code>nextIndex</code> to <code>ConflictIndex</code>, effectively jumping back to where the follower’s conflicting term started.
+This optimization allows the leader to perform correction <strong>per term</strong>, rather than <strong>per index</strong>, drastically reducing the number of RPCs needed for log repair, especially when followers lag by many entries. You can check the code for <code>replicate</code> method above (especially when the <code>res.Success</code> is set to false with <code>res.Term &lt;= leader.currentTerm)</code> to check the above behaviour of leader during log conflict.
+Once a consistent prefix is identified, the follower can safely append new entries included in the RPC. In the implementation, this is handled by the <code>reconcileLogs</code> method, which takes the leader’s entries and merges them into the follower’s log while ensuring term consistency.</li>
+</ul>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">rf</span> <span class="o">*</span><span class="nx">Raft</span><span class="p">)</span> <span class="nf">reconcileLogs</span><span class="p">(</span><span class="nx">leaderEntries</span> <span class="p">[]</span><span class="nx">LogEntry</span><span class="p">,</span> <span class="nx">leaderPrevLogIndex</span> <span class="kt">int</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 2</span><span class="cl">	<span class="nx">nextIndex</span> <span class="o">:=</span> <span class="nx">leaderPrevLogIndex</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="ln"> 3</span><span class="cl">	<span class="nx">currentLogLength</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span> <span class="o">+</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln"> 4</span><span class="cl">	<span class="nx">leaderEntriesIndex</span> <span class="o">:=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="ln"> 5</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 6</span><span class="cl">	<span class="k">for</span> <span class="nx">nextIndex</span> <span class="p">&lt;</span> <span class="nx">currentLogLength</span> <span class="o">&amp;&amp;</span> <span class="nx">leaderEntriesIndex</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">leaderEntries</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 7</span><span class="cl">		<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">[</span><span class="nx">nextIndex</span><span class="o">-</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">].</span><span class="nx">Term</span> <span class="o">!=</span> <span class="nx">leaderEntries</span><span class="p">[</span><span class="nx">leaderEntriesIndex</span><span class="p">].</span><span class="nx">Term</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 8</span><span class="cl">			<span class="k">break</span>
+</span></span><span class="line"><span class="ln"> 9</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln">10</span><span class="cl">
+</span></span><span class="line"><span class="ln">11</span><span class="cl">		<span class="nx">nextIndex</span><span class="o">++</span>
+</span></span><span class="line"><span class="ln">12</span><span class="cl">		<span class="nx">leaderEntriesIndex</span><span class="o">++</span>
+</span></span><span class="line"><span class="ln">13</span><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="ln">14</span><span class="cl">
+</span></span><span class="line"><span class="ln">15</span><span class="cl">	<span class="k">if</span> <span class="nx">leaderEntriesIndex</span> <span class="p">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nx">leaderEntries</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">16</span><span class="cl">		<span class="c1">// If an existing entry conflicts with a new one (same index but different terms), delete the existing entry and all that follow it</span>
+</span></span><span class="line"><span class="ln">17</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">log</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">[:</span><span class="nx">nextIndex</span><span class="o">-</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">]</span>
+</span></span><span class="line"><span class="ln">18</span><span class="cl">
+</span></span><span class="line"><span class="ln">19</span><span class="cl">		<span class="c1">//  Append any new entries not already in the log</span>
+</span></span><span class="line"><span class="ln">20</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">log</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">,</span> <span class="nx">leaderEntries</span><span class="p">[</span><span class="nx">leaderEntriesIndex</span><span class="p">:]</span><span class="o">...</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">21</span><span class="cl">
+</span></span><span class="line"><span class="ln">22</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nf">persist</span><span class="p">(</span><span class="kc">nil</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">23</span><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="ln">24</span><span class="cl">
+</span></span><span class="line"><span class="ln">25</span><span class="cl">	<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[Peer %d]: Reconciled logs with leader from index %d, current logs length %d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">leaderPrevLogIndex</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span><span class="o">+</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">26</span><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>This function essentially performs the final step of <strong>log reconciliation</strong> after the agreement point between leader and follower has been established.</p>
+<ul>
+<li>It starts from the index immediately after <code>leaderPrevLogIndex</code>:  the point up to which both leader and follower agree.</li>
+<li>Then it walks through both logs in parallel, comparing terms for each entry.</li>
+<li>As soon as it finds a mismatch (a conflict in term at the same index), it stops:  that’s where the logs diverge.</li>
+<li>From that point onward, it truncates the follower’s log (<code>rf.log = rf.log[:nextIndex - rf.snapshotLastLogIndex]</code>) and appends all remaining entries from the leader’s log.</li>
+</ul>
+<p>This effectively overwrites any inconsistent or “stale” entries on the follower with the authoritative entries from the leader, restoring complete log alignment.
+So, <code>reconcileLogs</code> is the place where the follower’s log is <strong>actually modified</strong>. It’s where the “<em>diff</em>” from the leader is applied after the last point of agreement. Once again, this highlights the fundamental directionality of Raft’s replication flow: <strong>log entries always move from the leader to the followers</strong>, never the other way around.</p>
+<h2 id="committing-and-applying-log-entries">Committing and Applying Log Entries<a hidden class="anchor" aria-hidden="true" href="#committing-and-applying-log-entries">#</a></h2>
+<p>If a leader receives successful <code>AppendEntries</code> RPC responses from a majority of followers, it indicates that the logs of a majority of peers match the leader&rsquo;s up to a specific index. Because agreement on a current log index implies agreement on all preceding indices, the leader can confidently assert that the logs match <strong>up to</strong> that given index. Consequently, the leader will then designate that index as the commit index.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="k">for</span> <span class="nx">i</span> <span class="o">:=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="nx">i</span> <span class="p">&gt;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span><span class="o">-</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">;</span> <span class="nx">i</span><span class="o">--</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 2</span><span class="cl">	<span class="nx">matchedPeerCount</span> <span class="o">:=</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="ln"> 3</span><span class="cl">	<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">Term</span> <span class="o">==</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">currentTerm</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 4</span><span class="cl">		<span class="k">for</span> <span class="nx">pi</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">peers</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 5</span><span class="cl">			<span class="k">if</span> <span class="nx">pi</span> <span class="o">!=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span> <span class="o">&amp;&amp;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">matchIndex</span><span class="p">[</span><span class="nx">pi</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="nx">i</span><span class="o">+</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 6</span><span class="cl">				<span class="nx">matchedPeerCount</span><span class="o">++</span>
+</span></span><span class="line"><span class="ln"> 7</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 8</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 9</span><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="ln">10</span><span class="cl">
+</span></span><span class="line"><span class="ln">11</span><span class="cl">	<span class="c1">// Largest possible log index greater the commitIndex replicated at majority of peers</span>
+</span></span><span class="line"><span class="ln">12</span><span class="cl">	<span class="c1">// update commitIndex</span>
+</span></span><span class="line"><span class="ln">13</span><span class="cl">	<span class="k">if</span> <span class="nx">matchedPeerCount</span> <span class="o">&gt;=</span> <span class="nx">majority</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">14</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span> <span class="p">=</span> <span class="nx">i</span> <span class="o">+</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln">15</span><span class="cl">
+</span></span><span class="line"><span class="ln">16</span><span class="cl">		<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[leader-replicate: %d | peer: %d]: Log index %d replicated to majority of peers.(%d/%d peers), updating commitIndex to : %d, current lastApplied value: %d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">peerIndex</span><span class="p">,</span> <span class="nx">i</span><span class="o">+</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">,</span> <span class="nx">matchedPeerCount</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">peers</span><span class="p">),</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">lastApplied</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">17</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">applyCond</span><span class="p">.</span><span class="nf">Signal</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">18</span><span class="cl">		<span class="k">break</span>
+</span></span><span class="line"><span class="ln">19</span><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="ln">20</span><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><p>This is evident at the end of the <code>replicate</code> method. After obtaining a success response for each peer-specific thread, the method verifies the <code>matchIndex</code> for all peers. Similar to <code>nextIndex</code>, each leader maintains a <code>matchIndex</code> for each peer. This <code>matchIndex</code> essentially signifies the index up to which the peer&rsquo;s log matches the leader&rsquo;s, or, in other words, the extent to which the leader&rsquo;s log has been replicated to that follower.
+As you can see if a new log entry has been replicated to majority, We also signal on <code>applyCond</code> condition variable.
+Upon starting, each peer launches both a <code>ticker</code> go routine and an <code>applier</code> go routine. The <code>applier</code>&rsquo;s function is to retrieve logs <strong>from the <code>lastAppliedIndex</code> (the point of the last application) up to the most recent commit index</strong> and execute each command on the state machine. In this setup, every Raft server instance receives an <code>apply</code> channel at startup, provided by the service utilizing RAFT. In our key-value server example, commands from log entries sent to the <code>apply</code> channel are processed by the KV server, which then executes them.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">rf</span> <span class="o">*</span><span class="nx">Raft</span><span class="p">)</span> <span class="nf">applier</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 2</span><span class="cl">	<span class="k">for</span> <span class="p">!</span><span class="nx">rf</span><span class="p">.</span><span class="nf">killed</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 3</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 4</span><span class="cl">		<span class="k">for</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">lastApplied</span> <span class="o">&gt;=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 5</span><span class="cl">			<span class="nx">rf</span><span class="p">.</span><span class="nx">applyCond</span><span class="p">.</span><span class="nf">Wait</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln"> 6</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln"> 7</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 8</span><span class="cl">		<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nf">killed</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 9</span><span class="cl">			<span class="k">return</span>
+</span></span><span class="line"><span class="ln">10</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln">11</span><span class="cl">
+</span></span><span class="line"><span class="ln">12</span><span class="cl">		<span class="nx">i</span> <span class="o">:=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">lastApplied</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="ln">13</span><span class="cl">		<span class="k">if</span> <span class="nx">i</span> <span class="p">&lt;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="o">+</span><span class="mi">1</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">14</span><span class="cl">			<span class="nx">i</span> <span class="p">=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="o">+</span> <span class="mi">1</span>
+</span></span><span class="line"><span class="ln">15</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln">16</span><span class="cl">
+</span></span><span class="line"><span class="ln">17</span><span class="cl">		<span class="nx">messages</span> <span class="o">:=</span> <span class="nb">make</span><span class="p">([]</span><span class="nx">raftapi</span><span class="p">.</span><span class="nx">ApplyMsg</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">18</span><span class="cl">		<span class="k">for</span> <span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">19</span><span class="cl">			<span class="c1">// Skip entries that are already in the snapshot</span>
+</span></span><span class="line"><span class="ln">20</span><span class="cl">			<span class="k">if</span> <span class="nx">i</span> <span class="o">&lt;=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">21</span><span class="cl">				<span class="k">continue</span>
+</span></span><span class="line"><span class="ln">22</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln">23</span><span class="cl">			<span class="nx">msg</span> <span class="o">:=</span> <span class="nx">raftapi</span><span class="p">.</span><span class="nx">ApplyMsg</span><span class="p">{</span>
+</span></span><span class="line"><span class="ln">24</span><span class="cl">				<span class="nx">CommandValid</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln">25</span><span class="cl">				<span class="nx">Command</span><span class="p">:</span>      <span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">[</span><span class="nx">i</span><span class="o">-</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span><span class="p">].</span><span class="nx">Command</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln">26</span><span class="cl">				<span class="nx">CommandIndex</span><span class="p">:</span> <span class="nx">i</span><span class="p">,</span>
+</span></span><span class="line"><span class="ln">27</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln">28</span><span class="cl">			<span class="nx">messages</span> <span class="p">=</span> <span class="nb">append</span><span class="p">(</span><span class="nx">messages</span><span class="p">,</span> <span class="nx">msg</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">29</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln">30</span><span class="cl">		<span class="nx">commitIndex</span> <span class="o">:=</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span>
+</span></span><span class="line"><span class="ln">31</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">32</span><span class="cl">
+</span></span><span class="line"><span class="ln">33</span><span class="cl">		<span class="k">for</span> <span class="nx">_</span><span class="p">,</span> <span class="nx">msg</span> <span class="o">:=</span> <span class="k">range</span> <span class="nx">messages</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">34</span><span class="cl">			<span class="k">if</span> <span class="nx">rf</span><span class="p">.</span><span class="nf">killed</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">35</span><span class="cl">				<span class="k">return</span>
+</span></span><span class="line"><span class="ln">36</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln">37</span><span class="cl">			<span class="nx">rf</span><span class="p">.</span><span class="nx">applyCh</span> <span class="o">&lt;-</span> <span class="nx">msg</span>
+</span></span><span class="line"><span class="ln">38</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln">39</span><span class="cl">
+</span></span><span class="line"><span class="ln">40</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Lock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">41</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">lastApplied</span> <span class="p">=</span> <span class="nx">commitIndex</span>
+</span></span><span class="line"><span class="ln">42</span><span class="cl">		<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[Peer: %d]: Applied logs till latest commit index: %d, lastApplied : %d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">lastApplied</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">43</span><span class="cl">		<span class="nx">rf</span><span class="p">.</span><span class="nx">mu</span><span class="p">.</span><span class="nf">Unlock</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">44</span><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="ln">45</span><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><blockquote>
+<p>While sending something to a Go channel, the channel itself can work concurrently with multiple threads pushing data from it. So, we do not need the <code>rf.mu</code> lock while sending commands, which can be a blocking operation. In a non-buffered channel, an inserted element is only accepted when there is an active consumer to consume that element. Therefore, to avoid holding the Raft server state&rsquo;s lock <code>mu</code>, we release the lock and only reacquire it after we have applied all the logs to log out the Raft server&rsquo;s state.</p></blockquote>
+<p>If the <code>commitIndex</code> is not greater than <code>lastAppliedIndex</code>, the applier thread pauses by unlocking and waiting for a signal. <strong>When the <code>commitIndex</code> of a leader or follower changes, the applier thread is signaled to resume and apply new logs (between <code>lastAppliedIndex</code> and <code>commitIndex</code>) to the state machine.</strong> The leader&rsquo;s <code>commitIndex</code> is updated upon majority replication. To ensure the replicated state of follower matches the leader&rsquo;s RAFT state (same <code>commitIndex</code>) and the underlying state machine&rsquo;s state (e.g., the KV server&rsquo;s state), the updated  <code>commitIndex</code> of leader is included in the next upcoming <code>AppendEntries</code> RPC heartbeat. Each follower, after agreeing with the RPC, updates its own <code>commitIndex</code> and signals its applier thread to update the state machine with the new logs received from the leader.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">rf</span> <span class="o">*</span><span class="nx">Raft</span><span class="p">)</span> <span class="p">(</span><span class="nx">args</span> <span class="o">*</span><span class="nx">AppendEntriesArgs</span><span class="p">,</span> <span class="nx">reply</span> <span class="o">*</span><span class="nx">AppendEntriesReply</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 2</span><span class="cl"><span class="c1">// ...existing code</span>
+</span></span><span class="line"><span class="ln"> 3</span><span class="cl"><span class="k">if</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderCommit</span> <span class="p">&gt;</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln"> 4</span><span class="cl">			<span class="c1">// If leaderCommit &gt; commitIndex, set commitIndex =</span>
+</span></span><span class="line"><span class="ln"> 5</span><span class="cl">			<span class="c1">// min(leaderCommit, index of last new entry)</span>
+</span></span><span class="line"><span class="ln"> 6</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 7</span><span class="cl">			<span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span> <span class="p">=</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderCommit</span>
+</span></span><span class="line"><span class="ln"> 8</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 9</span><span class="cl">			<span class="k">if</span> <span class="nx">args</span><span class="p">.</span><span class="nx">LeaderCommit</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span><span class="o">+</span><span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span> <span class="p">{</span>
+</span></span><span class="line"><span class="ln">10</span><span class="cl">				<span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span> <span class="p">=</span> <span class="nb">len</span><span class="p">(</span><span class="nx">rf</span><span class="p">.</span><span class="nx">log</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">+</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">snapshotLastLogIndex</span>
+</span></span><span class="line"><span class="ln">11</span><span class="cl">			<span class="p">}</span>
+</span></span><span class="line"><span class="ln">12</span><span class="cl">
+</span></span><span class="line"><span class="ln">13</span><span class="cl">			<span class="nf">dprintf</span><span class="p">(</span><span class="s">&#34;[Peer: %d]: Updated commmit index to %d.\n&#34;</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">me</span><span class="p">,</span> <span class="nx">rf</span><span class="p">.</span><span class="nx">commitIndex</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">14</span><span class="cl">
+</span></span><span class="line"><span class="ln">15</span><span class="cl">			<span class="nx">rf</span><span class="p">.</span><span class="nx">applyCond</span><span class="p">.</span><span class="nf">Signal</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">16</span><span class="cl">		<span class="p">}</span>
+</span></span><span class="line"><span class="ln">17</span><span class="cl"><span class="p">}</span>
+</span></span></code></pre></div><h3 id="why-majority-based-commitment-guarantees-safety">Why Majority-Based Commitment Guarantees Safety<a hidden class="anchor" aria-hidden="true" href="#why-majority-based-commitment-guarantees-safety">#</a></h3>
+<p>A critical property of Raft is that <strong>once a log entry is committed (replicated on a majority of servers), it is guaranteed to eventually be applied to the state machine</strong> even if the current leader crashes immediately after marking it committed.
+This guarantee comes from how Raft defines <em>commitment</em> and how election safety works together with <em>log matching</em>.
+When a leader replicates a new log entry to a majority of peers and advances its <code>commitIndex</code>, it knows that <em>at least a majority of servers (including itself) now store that entry in their logs</em>. Even if the leader crashes at this point (before or after applying the entry), that entry cannot be lost, because any future leader must have that entry as well.
+Here’s why: during the next election, any candidate must receive votes from a <strong>majority</strong> of peers to become the new leader. And followers will only vote for a candidate whose log is <a href="/blogs/building-fault-tolerant-kv-storage-system---part-1/"><strong>at least as up-to-date</strong> as their own</a>, Meaning the candidate’s last log term and index are greater than or equal to the follower’s.
+Since the previously committed entry was stored on a majority, <em>at least one of those peers (and in fact, at least one from that same majority)</em> will participate in the next election. Because votes also require a majority, any new leader must intersect with that previous majority i.e., it must share at least one server that already contained the committed entry. As a result, the new leader’s log will contain that committed entry (or a longer version of it), ensuring that <strong>committed entries never roll back</strong> and will always be part of future leaders’ logs.
+This intersection property between consecutive majorities ensures Raft’s <strong>log commitment safety</strong>:</p>
+<blockquote>
+<p>Once a log entry is committed, it will never be overwritten or lost, It will eventually be applied to the state machine on all servers.</p></blockquote>
+<p>This reasoning also explains why it’s safe for the applier thread to apply all entries up to <code>commitIndex</code>. The guarantee that every future leader’s log contains those entries means that applying them to the state machine can never be undone, preserving Raft’s <strong>state machine safety property</strong>,  no server ever applies a log entry that another server later overwrites.
+However, this safety holds under one important restriction, we will discuss this restriction shortly, but first lets see few scenarios with the end client in picture using a service which is replicated with RAFT.</p>
+<ol>
+<li><strong>Leader replication and response to client</strong>
+At the service layer, this guarantee extends all the way to the client. When a client issues a command to the leader (for example, a PUT request to the key-value server), the service calls the Raft instance’s <code>Start()</code> method. This appends the command as a new log entry and begins replication across peers (We signal the <code>replicatorCond</code> condition variable which resumes the <code>replicate</code> method this time with a new log entry). The <code>Start()</code> call returns immediately, but the KV service <strong>does not</strong> reply to the client yet, it waits until that log entry is replicated on a <strong>majority</strong> of servers and marked as committed. Only after the applier thread applies this entry to the state machine does the service respond to the client with success.
+This ensures that every command acknowledged to the client is backed by a majority-replicated, committed log entry, one that will survive even if the current leader crashes right after responding. Responding before commitment would be unsafe, since uncommitted entries can be discarded if the leader fails before majority replication completes.
+To visualize this flow, here’s how the end-to-end interaction between the client, leader, followers, and the KV state machine looks:</li>
+</ol>
+<pre class="mermaid">
+  sequenceDiagram
+    participant C as Client
+    participant L as Leader (KV + Raft)
+    participant F1 as Follower 1
+    participant F2 as Follower 2
+    participant SM as State Machine
+
+    C-&gt;&gt;L: PUT x=5 (Client Request)
+    L-&gt;&gt;L: Start(cmd) → Append log entry
+    L-&gt;&gt;F1: AppendEntries RPC (new log entry)
+    L-&gt;&gt;F2: AppendEntries RPC (new log entry)
+    F1--&gt;&gt;L: AppendEntries Reply (Success)
+    F2--&gt;&gt;L: AppendEntries Reply (Success)
+    Note over L: Entry replicated on majority
+    L-&gt;&gt;L: Update commitIndex, signal applier
+    L-&gt;&gt;SM: Apply command x=5
+    SM--&gt;&gt;L: State updated
+    L--&gt;&gt;C: Success (after apply)
+
+    Note over L,C: Client response only after&lt;br/&gt;majority replication &amp; application
+</pre>
+<ol start="2">
+<li><strong>Leader Crashes After Committing but Before Applying:</strong></li>
+</ol>
+<pre class="mermaid">
+  sequenceDiagram
+    participant C as Client
+    participant L as Leader (Term T)
+    participant F1 as Follower 1
+    participant F2 as Follower 2
+    participant L&#39; as New Leader (Term T+1)
+
+    C-&gt;&gt;L: Start(command)
+    L-&gt;&gt;L: Append log entry [term T, index i]
+    L-&gt;&gt;F1: AppendEntries [entry i]
+    L-&gt;&gt;F2: AppendEntries [entry i]
+    F1--&gt;&gt;L: Ack
+    F2--&gt;&gt;L: Ack
+    L-&gt;&gt;L: commitIndex = i (majority replicated)
+    note right of L: ✅ Command is committed but not yet applied
+    L--X C: (Crashes before replying)
+    note over C: ⏱️ Client times out (no response)
+    C-&gt;&gt;L&#39;: Retry Start(command)
+    note right of L&#39;: Election happens, new leader&lt;br&gt;contains entry i (since committed)
+    L&#39;-&gt;&gt;L&#39;: Apply entry i to state machine
+    L&#39;--&gt;&gt;C: Respond with result (deduplicated via client ID)
+</pre>
+<ul>
+<li>The leader had <strong>committed</strong> the log (i.e., replicated to majority), but before applying or responding, it <strong>crashed</strong>.</li>
+<li>The <strong>client times out</strong>, since no response was received.</li>
+<li>A new leader is elected (say, <code>L'</code>), which <strong>must contain all committed entries</strong> from the previous term.</li>
+<li>During recovery, <code>L'</code>’s applier thread applies the committed command to its state machine.</li>
+<li>The client retries the command.
+<ul>
+<li>If the system <strong>uses a unique client ID + command ID</strong>, the server can detect it’s a <strong>duplicate request</strong> and not reapply the command, ensuring <strong>exactly-once semantics</strong>.</li>
+</ul>
+</li>
+</ul>
+<h3 id="why-leader-commits-log-entry-when-its-of-currentterm-only">Why leader commits log entry when its of <code>currentTerm</code> only?<a hidden class="anchor" aria-hidden="true" href="#why-leader-commits-log-entry-when-its-of-currentterm-only">#</a></h3>
+<p>You may have noticed in the <code>replicate</code> method that when counting majority replication we start form the lastest log index at the leader and if that log&rsquo;s term is equal to leader&rsquo;s current term then only we check the replication factor for that log and update commit index and applier thread in case of majority, But why is this the case?</p>
+<h1 id="references">References<a hidden class="anchor" aria-hidden="true" href="#references">#</a></h1>
+<ul>
+<li><a href="https://pdos.csail.mit.edu/6.824/papers/raft-extended.pdf">https://pdos.csail.mit.edu/6.824/papers/raft-extended.pdf</a></li>
+<li>Log Replication <a href="https://thesecretlivesofdata.com/raft/#replication">Visualisation</a></li>
+<li><a href="https://thesquareplanet.com/blog/students-guide-to-raft/">https://thesquareplanet.com/blog/students-guide-to-raft/</a></li>
+<li><a href="https://pages.cs.wisc.edu/~remzi/OSTEP/threads-cv.pdf">https://pages.cs.wisc.edu/~remzi/OSTEP/threads-cv.pdf</a></li>
+</ul>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="http://localhost:63714/blogs/tags/%23replication/">#Replication</a></li>
+      <li><a href="http://localhost:63714/blogs/tags/%23leader-election/">#Leader-Election</a></li>
+      <li><a href="http://localhost:63714/blogs/tags/raft/">RAFT</a></li>
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="http://localhost:63714/blogs/multipart-form-uploads---busboy-and-node-streams/">
+    <span class="title">« Prev</span>
+    <br>
+    <span>Multipart Form Uploads - Busboy and Node Streams</span>
+  </a>
+  <a class="next" href="http://localhost:63714/blogs/building-fault-tolerant-kv-storage-system---part-1/">
+    <span class="title">Next »</span>
+    <br>
+    <span>Building Fault Tolerant KV Storage System - Part 1</span>
+  </a>
+</nav>
+
+
+<ul class="share-buttons">
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Building Fault Tolerant KV Storage System - Part 2 on x"
+            href="https://x.com/intent/tweet/?text=Building%20Fault%20Tolerant%20KV%20Storage%20System%20-%20Part%202&amp;url=http%3a%2f%2flocalhost%3a63714%2fblogs%2fbuilding-fault-tolerant-kv-storage-system---part-2-1%2f&amp;hashtags=%23Replication%2c%23Leader-Election%2cRAFT">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M512 62.554 L 512 449.446 C 512 483.97 483.97 512 449.446 512 L 62.554 512 C 28.03 512 0 483.97 0 449.446 L 0 62.554 C 0 28.03 28.029 0 62.554 0 L 449.446 0 C 483.971 0 512 28.03 512 62.554 Z M 269.951 190.75 L 182.567 75.216 L 56 75.216 L 207.216 272.95 L 63.9 436.783 L 125.266 436.783 L 235.9 310.383 L 332.567 436.783 L 456 436.783 L 298.367 228.367 L 432.367 75.216 L 371.033 75.216 Z M 127.633 110 L 164.101 110 L 383.481 400.065 L 349.5 400.065 Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Building Fault Tolerant KV Storage System - Part 2 on linkedin"
+            href="https://www.linkedin.com/shareArticle?mini=true&amp;url=http%3a%2f%2flocalhost%3a63714%2fblogs%2fbuilding-fault-tolerant-kv-storage-system---part-2-1%2f&amp;title=Building%20Fault%20Tolerant%20KV%20Storage%20System%20-%20Part%202&amp;summary=Building%20Fault%20Tolerant%20KV%20Storage%20System%20-%20Part%202&amp;source=http%3a%2f%2flocalhost%3a63714%2fblogs%2fbuilding-fault-tolerant-kv-storage-system---part-2-1%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-288.985,423.278l0,-225.717l-75.04,0l0,225.717l75.04,0Zm270.539,0l0,-129.439c0,-69.333 -37.018,-101.586 -86.381,-101.586c-39.804,0 -57.634,21.891 -67.617,37.266l0,-31.958l-75.021,0c0.995,21.181 0,225.717 0,225.717l75.02,0l0,-126.056c0,-6.748 0.486,-13.492 2.474,-18.315c5.414,-13.475 17.767,-27.434 38.494,-27.434c27.135,0 38.007,20.707 38.007,51.037l0,120.768l75.024,0Zm-307.552,-334.556c-25.674,0 -42.448,16.879 -42.448,39.002c0,21.658 16.264,39.002 41.455,39.002l0.484,0c26.165,0 42.452,-17.344 42.452,-39.002c-0.485,-22.092 -16.241,-38.954 -41.943,-39.002Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Building Fault Tolerant KV Storage System - Part 2 on reddit"
+            href="https://reddit.com/submit?url=http%3a%2f%2flocalhost%3a63714%2fblogs%2fbuilding-fault-tolerant-kv-storage-system---part-2-1%2f&title=Building%20Fault%20Tolerant%20KV%20Storage%20System%20-%20Part%202">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-3.446,265.638c0,-22.964 -18.616,-41.58 -41.58,-41.58c-11.211,0 -21.361,4.457 -28.841,11.666c-28.424,-20.508 -67.586,-33.757 -111.204,-35.278l18.941,-89.121l61.884,13.157c0.756,15.734 13.642,28.29 29.56,28.29c16.407,0 29.706,-13.299 29.706,-29.701c0,-16.403 -13.299,-29.702 -29.706,-29.702c-11.666,0 -21.657,6.792 -26.515,16.578l-69.105,-14.69c-1.922,-0.418 -3.939,-0.042 -5.585,1.036c-1.658,1.073 -2.811,2.761 -3.224,4.686l-21.152,99.438c-44.258,1.228 -84.046,14.494 -112.837,35.232c-7.468,-7.164 -17.589,-11.591 -28.757,-11.591c-22.965,0 -41.585,18.616 -41.585,41.58c0,16.896 10.095,31.41 24.568,37.918c-0.639,4.135 -0.99,8.328 -0.99,12.576c0,63.977 74.469,115.836 166.33,115.836c91.861,0 166.334,-51.859 166.334,-115.836c0,-4.218 -0.347,-8.387 -0.977,-12.493c14.564,-6.47 24.735,-21.034 24.735,-38.001Zm-119.474,108.193c-20.27,20.241 -59.115,21.816 -70.534,21.816c-11.428,0 -50.277,-1.575 -70.522,-21.82c-3.007,-3.008 -3.007,-7.882 0,-10.889c3.003,-2.999 7.882,-3.003 10.885,0c12.777,12.781 40.11,17.317 59.637,17.317c19.522,0 46.86,-4.536 59.657,-17.321c3.016,-2.999 7.886,-2.995 10.885,0.008c3.008,3.011 3.003,7.882 -0.008,10.889Zm-5.23,-48.781c-16.373,0 -29.701,-13.324 -29.701,-29.698c0,-16.381 13.328,-29.714 29.701,-29.714c16.378,0 29.706,13.333 29.706,29.714c0,16.374 -13.328,29.698 -29.706,29.698Zm-160.386,-29.702c0,-16.381 13.328,-29.71 29.714,-29.71c16.369,0 29.689,13.329 29.689,29.71c0,16.373 -13.32,29.693 -29.689,29.693c-16.386,0 -29.714,-13.32 -29.714,-29.693Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Building Fault Tolerant KV Storage System - Part 2 on facebook"
+            href="https://facebook.com/sharer/sharer.php?u=http%3a%2f%2flocalhost%3a63714%2fblogs%2fbuilding-fault-tolerant-kv-storage-system---part-2-1%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-106.468,0l0,-192.915l66.6,0l12.672,-82.621l-79.272,0l0,-53.617c0,-22.603 11.073,-44.636 46.58,-44.636l36.042,0l0,-70.34c0,0 -32.71,-5.582 -63.982,-5.582c-65.288,0 -107.96,39.569 -107.96,111.204l0,62.971l-72.573,0l0,82.621l72.573,0l0,192.915l-191.104,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Building Fault Tolerant KV Storage System - Part 2 on whatsapp"
+            href="https://api.whatsapp.com/send?text=Building%20Fault%20Tolerant%20KV%20Storage%20System%20-%20Part%202%20-%20http%3a%2f%2flocalhost%3a63714%2fblogs%2fbuilding-fault-tolerant-kv-storage-system---part-2-1%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-58.673,127.703c-33.842,-33.881 -78.847,-52.548 -126.798,-52.568c-98.799,0 -179.21,80.405 -179.249,179.234c-0.013,31.593 8.241,62.428 23.927,89.612l-25.429,92.884l95.021,-24.925c26.181,14.28 55.659,21.807 85.658,21.816l0.074,0c98.789,0 179.206,-80.413 179.247,-179.243c0.018,-47.895 -18.61,-92.93 -52.451,-126.81Zm-126.797,275.782l-0.06,0c-26.734,-0.01 -52.954,-7.193 -75.828,-20.767l-5.441,-3.229l-56.386,14.792l15.05,-54.977l-3.542,-5.637c-14.913,-23.72 -22.791,-51.136 -22.779,-79.287c0.033,-82.142 66.867,-148.971 149.046,-148.971c39.793,0.014 77.199,15.531 105.329,43.692c28.128,28.16 43.609,65.592 43.594,105.4c-0.034,82.149 -66.866,148.983 -148.983,148.984Zm81.721,-111.581c-4.479,-2.242 -26.499,-13.075 -30.604,-14.571c-4.105,-1.495 -7.091,-2.241 -10.077,2.241c-2.986,4.483 -11.569,14.572 -14.182,17.562c-2.612,2.988 -5.225,3.364 -9.703,1.12c-4.479,-2.241 -18.91,-6.97 -36.017,-22.23c-13.314,-11.876 -22.304,-26.542 -24.916,-31.026c-2.612,-4.484 -0.279,-6.908 1.963,-9.14c2.016,-2.007 4.48,-5.232 6.719,-7.847c2.24,-2.615 2.986,-4.484 4.479,-7.472c1.493,-2.99 0.747,-5.604 -0.374,-7.846c-1.119,-2.241 -10.077,-24.288 -13.809,-33.256c-3.635,-8.733 -7.327,-7.55 -10.077,-7.688c-2.609,-0.13 -5.598,-0.158 -8.583,-0.158c-2.986,0 -7.839,1.121 -11.944,5.604c-4.105,4.484 -15.675,15.32 -15.675,37.364c0,22.046 16.048,43.342 18.287,46.332c2.24,2.99 31.582,48.227 76.511,67.627c10.685,4.615 19.028,7.371 25.533,9.434c10.728,3.41 20.492,2.929 28.209,1.775c8.605,-1.285 26.499,-10.833 30.231,-21.295c3.732,-10.464 3.732,-19.431 2.612,-21.298c-1.119,-1.869 -4.105,-2.99 -8.583,-5.232Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Building Fault Tolerant KV Storage System - Part 2 on telegram"
+            href="https://telegram.me/share/url?text=Building%20Fault%20Tolerant%20KV%20Storage%20System%20-%20Part%202&amp;url=http%3a%2f%2flocalhost%3a63714%2fblogs%2fbuilding-fault-tolerant-kv-storage-system---part-2-1%2f">
+            <svg version="1.1" xml:space="preserve" viewBox="2 2 28 28" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M26.49,29.86H5.5a3.37,3.37,0,0,1-2.47-1,3.35,3.35,0,0,1-1-2.47V5.48A3.36,3.36,0,0,1,3,3,3.37,3.37,0,0,1,5.5,2h21A3.38,3.38,0,0,1,29,3a3.36,3.36,0,0,1,1,2.46V26.37a3.35,3.35,0,0,1-1,2.47A3.38,3.38,0,0,1,26.49,29.86Zm-5.38-6.71a.79.79,0,0,0,.85-.66L24.73,9.24a.55.55,0,0,0-.18-.46.62.62,0,0,0-.41-.17q-.08,0-16.53,6.11a.59.59,0,0,0-.41.59.57.57,0,0,0,.43.52l4,1.24,1.61,4.83a.62.62,0,0,0,.63.43.56.56,0,0,0,.4-.17L16.54,20l4.09,3A.9.9,0,0,0,21.11,23.15ZM13.8,20.71l-1.21-4q8.72-5.55,8.78-5.55c.15,0,.23,0,.23.16a.18.18,0,0,1,0,.06s-2.51,2.3-7.52,6.8Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share Building Fault Tolerant KV Storage System - Part 2 on ycombinator"
+            href="https://news.ycombinator.com/submitlink?t=Building%20Fault%20Tolerant%20KV%20Storage%20System%20-%20Part%202&u=http%3a%2f%2flocalhost%3a63714%2fblogs%2fbuilding-fault-tolerant-kv-storage-system---part-2-1%2f">
+            <svg version="1.1" xml:space="preserve" width="30px" height="30px" viewBox="0 0 512 512" fill="currentColor"
+                xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+                <path
+                    d="M449.446 0C483.971 0 512 28.03 512 62.554L512 449.446C512 483.97 483.97 512 449.446 512L62.554 512C28.03 512 0 483.97 0 449.446L0 62.554C0 28.03 28.029 0 62.554 0L449.446 0ZM183.8767 87.9921H121.8427L230.6673 292.4508V424.0079H281.3328V292.4508L390.1575 87.9921H328.1233L256 238.2489z" />
+            </svg>
+        </a>
+    </li>
+</ul>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2025 <a href="http://localhost:63714/blogs/">Learning Loop</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a><script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs";
+
+  
+  function isDarkMode() {
+    return (
+      document.body.classList.contains("dark") ||
+      localStorage.getItem("pref-theme") === "dark" ||
+      (!localStorage.getItem("pref-theme") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches)
+    );
+  }
+
+  
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: isDarkMode() ? "dark" : "default",
+    themeVariables: {
+      dark: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#ffffff",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#ffffff",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+        background: "#1a1a1a",
+        mainBkg: "#2d2d2d",
+        secondBkg: "#3d3d3d",
+        tertiaryBkg: "#4d4d4d",
+      },
+      default: {
+        primaryColor: "#ff6b6b",
+        primaryTextColor: "#000000",
+        primaryBorderColor: "#ff6b6b",
+        lineColor: "#000000",
+        secondaryColor: "#4ecdc4",
+        tertiaryColor: "#45b7d1",
+      },
+    },
+  });
+
+  
+  const themeToggle = document.getElementById("theme-toggle");
+  if (themeToggle) {
+    themeToggle.addEventListener("click", () => {
+      setTimeout(() => {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: isDarkMode() ? "dark" : "default",
+          themeVariables: {
+            dark: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#ffffff",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#ffffff",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+              background: "#1a1a1a",
+              mainBkg: "#2d2d2d",
+              secondBkg: "#3d3d3d",
+              tertiaryBkg: "#4d4d4d",
+            },
+            default: {
+              primaryColor: "#ff6b6b",
+              primaryTextColor: "#000000",
+              primaryBorderColor: "#ff6b6b",
+              lineColor: "#000000",
+              secondaryColor: "#4ecdc4",
+              tertiaryColor: "#45b7d1",
+            },
+          },
+        });
+
+        
+        document.querySelectorAll(".mermaid").forEach((element) => {
+          element.removeAttribute("data-processed");
+          mermaid.init(undefined, element);
+        });
+      }, 100);
+    });
+  }
+</script>
+
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'copied!';
+            setTimeout(() => {
+                copybutton.innerHTML = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>
