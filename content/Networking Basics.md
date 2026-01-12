@@ -739,6 +739,9 @@ root@ubuntu-01:laborant# tcpdump -i ceth6 -e -n
 Following diagram shows how VLAN separates traffic of two subnets by enabling VLAN filtering at the bridge level.
 ![Pasted image 20260112220530.png](/media/pasted-image-20260112220530.png)
 
+## Conclusion
+In this post, we explored how **L1, L2, and L3 network segments** are formed and how the different layers of the **OSI model** work together in practice using Linux network namespaces. We began with pure Layer 2 communication using MAC addresses, examined broadcast domains and MAC learning behavior in a bridge, and then built on top of that to understand Layer 3 communication using IP and ARP. Through packet captures, we clearly saw how ARP bridges the gap between IP addressing and Ethernet, and how broadcast domains define the scope of Layer 2 visibility. Finally, by introducing VLANs, we demonstrated how broadcast domains can be cleanly partitioned within a single Layer 2 infrastructure, reinforcing the separation between Layer 2 forwarding and Layer 3 addressing while still allowing scalable and structured network designs.
+
 # References
 
 https://labs.iximiuz.com/courses/computer-networking-fundamentals - A great place to experiment with contents of this blog. This blog post is inspired from the course itself - Highly recommended.

@@ -1,0 +1,63 @@
+/* Dark theme styles for GitHub Gist */
+body.dark .gist .blob-wrapper {
+  background-color: #0d1117 !important;
+}
+body.dark .gist .blob-num {
+  background-color: #161b22 !important;
+  color: #8b949e !important;
+}
+body.dark .gist .blob-code {
+  background-color: #0d1117 !important;
+  color: #c9d1d9 !important;
+}
+body.dark .gist .blob-code-inner {
+  color: #c9d1d9 !important;
+}
+body.dark .gist .gist-meta {
+  background-color: #161b22 !important;
+  color: #8b949e !important;
+}
+body.dark .gist .gist-meta a {
+  color: #58a6ff !important;
+}
+body.dark .gist .pl-c {
+  color: #8b949e !important;
+}
+body.dark .gist .pl-c1,
+body.dark .gist .pl-s .pl-v {
+  color: #79c0ff !important;
+}
+body.dark .gist .pl-e,
+body.dark .gist .pl-en {
+  color: #d2a8ff !important;
+}
+body.dark .gist .pl-s,
+body.dark .gist .pl-pds,
+body.dark .gist .pl-s .pl-pds .pl-s .pl-cce {
+  color: #a5d6ff !important;
+}
+body.dark .gist .pl-sr {
+  color: #7ee787 !important;
+}
+body.dark .gist .pl-sr .pl-cce,
+body.dark .gist .pl-sr .pl-sre {
+  color: #7ee787 !important;
+}
+body.dark .gist .pl-k {
+  color: #ff7b72 !important;
+}
+body.dark .gist .pl-smi,
+body.dark .gist .pl-s .pl-s1 {
+  color: #c9d1d9 !important;
+}
+body.dark .gist .pl-ent {
+  color: #7ee787 !important;
+}
+body.dark .gist .pl-ml {
+  color: #f85149 !important;
+}
+body.dark .gist .pl-mh,
+body.dark .gist .pl-mh .pl-en,
+body.dark .gist .pl-ms {
+  color: #1f6feb !important;
+}
