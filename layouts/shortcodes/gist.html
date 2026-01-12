@@ -1,0 +1,5 @@
+{{- $gistId := .Get 0 -}} {{- $file := .Get 1 -}} {{- if $file -}}
+<script src="https://gist.github.com/{{ $gistId }}.js?file={{ $file }}"></script>
+{{- else -}}
+<script src="https://gist.github.com/{{ $gistId }}.js"></script>
+{{- end -}}
