@@ -108,7 +108,7 @@ const server = http.createServer(app).listen(port);
 server.keepAliveTimeout = 45 * 1000; // 45 seconds
 ```
 
-## HTTP2
+## HTTP/2
 If you read the issue comment linked below, which discusses the same problem, you will notice a recurring mention of HTTP/2, which is used internally by the Istio service mesh. This is also evident from the trace shown earlier, where the communication between the ingress gateway and the sidecar proxy uses HTTP/2, while the failed connection to the main application container occurs over HTTP/1.1.
 
 https://github.com/istio/istio/issues/55138#issuecomment-2666855044
@@ -123,7 +123,7 @@ In short, high keep-alive timeouts are far less problematic for HTTP/2 connectio
 
 As a result, the one-hour keep-alive default in Istio is safe for HTTP/2-based Istio-to-Istio communication, but becomes problematic only when applied to HTTP/1.1 connections between the sidecar proxy and the application container.
 
-A simplistic sequence diagram of HTTP2 connection's graceful shutdown.
+A simplistic sequence diagram of HTTP/2 connection's graceful shutdown.
 
 ```mermaid
 sequenceDiagram
