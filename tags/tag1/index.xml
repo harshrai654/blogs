@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Tag1 on My New Hugo Site</title>
+    <link>http://localhost:1313/blogs/tags/tag1/</link>
+    <description>Recent content in Tag1 on My New Hugo Site</description>
+    <generator>Hugo -- 0.145.0</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 01 Mar 2025 20:41:00 +0000</lastBuildDate>
+    <atom:link href="http://localhost:1313/blogs/tags/tag1/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Your Post Title</title>
+      <link>http://localhost:1313/blogs/files-and-directories/</link>
+      <pubDate>Sat, 01 Mar 2025 20:41:00 +0000</pubDate>
+      <guid>http://localhost:1313/blogs/files-and-directories/</guid>
+      <description>&lt;p&gt;23-02-2025 15:07&lt;/p&gt;
+&lt;p&gt;Tags: #Disk #OS #FileSystem&lt;/p&gt;
+&lt;h1 id=&#34;files-and-directories&#34;&gt;Files and directories&lt;/h1&gt;
+&lt;p&gt;File systems virtualize persistent storage (e.g., hard drives, SSDs) into user-friendly files and directories, adding a third pillar to OS abstractions (processes for CPU, address spaces for memory).&lt;/p&gt;
+&lt;h2 id=&#34;file-paths-and-system-calls&#34;&gt;File Paths and System Calls&lt;/h2&gt;
+&lt;p&gt;Files are organized in a &lt;strong&gt;tree-like directory structure&lt;/strong&gt;, starting from the root (/). A file’s location is identified by its &lt;strong&gt;pathname&lt;/strong&gt; (e.g., /home/user/file.txt). To interact with files, processes use &lt;strong&gt;system calls&lt;/strong&gt;:&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>
