@@ -9,6 +9,9 @@ markup:
     lineNos: true
     lineNumbersInTable: false
 params:
+  author:
+    name: Harsh
+    email: harshrai456@gmail.com
   ShowReadingTime: true
   ShowShareButtons: true
   ShowPostNavLinks: true
