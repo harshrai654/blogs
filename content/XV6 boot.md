@@ -1,5 +1,5 @@
 ---
-title: XV6 boot 1
+title: XV6 boot
 draft: false
 tags:
   - OS
